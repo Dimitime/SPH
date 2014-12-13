@@ -21,6 +21,7 @@
 GLuint programID;
 GLuint vao;
 GLuint vbo;
+GLuint vbo2;
 
 std::vector<Particle> particles;
 
