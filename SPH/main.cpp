@@ -185,7 +185,7 @@ void init() {
 	glBindVertexArray(vao);
 
 	//Load the shaders
-	programID = LoadShaders( "sph.vertexshader", "sph.fragmentshader" );
+	programID = LoadShaders( "Shaders/sph.vertexshader", "Shaders/sph.fragmentshader" );
 
 	unsigned int size = 100;
 
