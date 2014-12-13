@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <stdlib.h>
 #include <string>
 #include <fstream>
@@ -28,7 +28,7 @@ GLuint vbo;
  *
  */	
 void disp(void) {
-    glClearColor(0.0, 0.0, 0.0, 1.0);
+    glClearColor(1.0, 0.0, 0.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
     //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     //particles[0].display();
@@ -228,9 +228,9 @@ void init() {
  */ 
 int main (int argc, char** argv) {
 	// init glut:
-/*	glutInit (&argc, argv);
-    glutInitContextVersion(3,3);
-    glutInitContextProfile(GLUT_CORE_PROFILE);
+	glutInit (&argc, argv);
+    //glutInitContextVersion(3,3);
+    //glutInitContextProfile(GLUT_CORE_PROFILE);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
 	glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
 	glutInitWindowPosition(0,0);
@@ -245,7 +245,8 @@ int main (int argc, char** argv) {
     glutKeyboardFunc(&keyboard);
 	glutSpecialFunc(&skeyboard);
     glutMouseFunc(&mouse); 
-*/
+
+/*
     // Initialise GLFW
     if( !glfwInit() )
     {
@@ -268,7 +269,7 @@ int main (int argc, char** argv) {
         return -1;
     }
     glfwMakeContextCurrent(window); // Initialize GLEW 
-
+*/
 	glewExperimental=GL_TRUE;
 	GLenum err=glewInit();
 	if(err!=GLEW_OK)
@@ -279,9 +280,9 @@ int main (int argc, char** argv) {
 		exit(0);
     }
 
-    std::cout << glGetString(GL_SHADING_LANGUAGE_VERSION ) << std::endl;
+    std::cout << "Version: " << glGetString(GL_VERSION) << std::endl;
 	//init();
-
+/*
     // Ensure we can capture the escape key being pressed below
     glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);     
     while (!glfwWindowShouldClose(window))
@@ -297,7 +298,7 @@ int main (int argc, char** argv) {
     glfwDestroyWindow(window);
     glfwTerminate();
     exit(EXIT_SUCCESS);
-	// enter tha main loop and process events:
-//	glutMainLoop();
+*/	// enter tha main loop and process events:
+	glutMainLoop();
 	return 0;
 }
