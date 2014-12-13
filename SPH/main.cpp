@@ -8,27 +8,48 @@
 #include <time.h>
 
 #include <GL/glew.h>
-//#include "Particle.hpp"
-#include <GL/glut.h>
+#include "Particle.hpp"
+//#include <GL/glut.h>
 //#include <GL/freeglut_ext.h>
 //#include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
+//#include <glm/glm.hpp>
 
 #define WINDOW_WIDTH 500
 #define WINDOW_HEIGHT 500
+#define NUMBER_PARTICLES 100
 
 GLuint programID;
 GLuint vao;
 GLuint vbo;
 
-//std::vector<Particle> particles;
+std::vector<Particle> particles;
+
+/*
+ * Draws the particles
+ */
+void draw_particles() {
+	//register the vbo with opengl
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);	
+	//Extract the positions so we can intialize the particles
+    GLfloat initpos[3*NUMBER_PARTICLES]; 
+    int j=0;
+    for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
+        initpos[j] = particles[i].pos.x;
+        initpos[j+1] = particles[i].pos.y;
+        initpos[j+2] = particles[i].pos.z;
+        //std::cout << initpos[j] << ", " << initpos[j+1] << ", " << initpos[j+2] << std::endl; 
+        j += 3; 
+    }
+	//Initialize the vbo to 0, as it will be computed by the GPU
+	glBufferData(GL_ARRAY_BUFFER, 3*NUMBER_PARTICLES*sizeof(glm::vec3), initpos, GL_DYNAMIC_DRAW);
+}
 
 /*
  * Update function for GLUT
  *
  */	
 void disp(void) {
-    glClearColor(1.0, 0.0, 0.0, 1.0);
+    glClearColor(1.0, 1.0, 1.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
     //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     //particles[0].display();
@@ -36,24 +57,25 @@ void disp(void) {
 	//glEnableVertexAttribArray(1);
 	//Colors are indices [N...2N-1] in the vbo
 	//glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*) ( WINDOW_WIDTH * WINDOW_HEIGHT * sizeof(glm::vec3)) );
+	
+	draw_particles();
 
-	//glBindVertexArray(vao);
-	//glDrawArrays(GL_POINTS, 0, 100);
+	glUseProgram(programID);
+
+	//Vertices are indices [0...N-1] in the vbo
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+	glEnableVertexAttribArray(0);
+
+	glBindVertexArray(vao);
+	glDrawArrays(GL_POINTS, 0, 100);
 
 	//unbind everything
 	//glDisableVertexAttribArray(1);
-	//glDisableVertexAttribArray(0);
-	//glUseProgram(0);
-	//glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glDisableVertexAttribArray(0);
+	glUseProgram(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	//glFlush();
-	//glutSwapBuffers();
-}
-
-/*
- * I don't think I need this
- *
- */ 
-static void Reshape(int width, int height) {
+	glutSwapBuffers();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -86,11 +108,16 @@ static void skeyboard(int key, int x, int y) {
 
 /* Idle function */
 static void idle( void ) {
-	//int timems = glutGet(GLUT_ELAPSED_TIME);
-	//if (timems % 100 == 0)
-    //    glutPostRedisplay( );
+	int timems = glutGet(GLUT_ELAPSED_TIME);
+
+	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
+		particles[i].pos.x+=0.00001f;
+	}
+
+	if (timems % 100 == 0)
+        glutPostRedisplay( );
 }
-/*
+
 //Loading shelders
 GLuint LoadShaders(const char * vertex_file_path, const char * fragment_file_path) {
     // Create the shaders
@@ -169,13 +196,14 @@ GLuint LoadShaders(const char * vertex_file_path, const char * fragment_file_pat
 
 //Initialize all the particles
 void initScene() {
-    for (int i=0; i<10; i++) {
-        for (int j=0; j<10; j++) {
+    for (int i=-5; i<5; i++) {
+        for (int j=-5; j<5; j++) {
             Particle part(glm::vec3(i/10.0f,j/10.0f,0.0f), glm::vec3(0.0f,0.0f,0.0f), glm::vec3(0.0f,0.0f,0.0f), 1.0f, 1.0f, 1.0f, 1.0f);
             particles.push_back(part);
         }
     }
 }
+
 void init() {
 	glClearColor(0.0, 0.0, 0.0, 1.0);
 	glEnable(GL_PROGRAM_POINT_SIZE);
@@ -187,41 +215,30 @@ void init() {
 	//Load the shaders
 	programID = LoadShaders( "Shaders/sph.vertexshader", "Shaders/sph.fragmentshader" );
 
-	unsigned int size = 100;
+	const unsigned int size = 100;
 
     initScene();
 
-    GLfloat initpos[3*size]; 
+	//Extract the positions so we can intialize the particles
+    GLfloat initpos[3*NUMBER_PARTICLES]; 
     int j=0;
-    for (int i=0; i<particles.size(); i++) {
+    for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
         initpos[j] = particles[i].pos.x;
         initpos[j+1] = particles[i].pos.y;
         initpos[j+2] = particles[i].pos.z;
-
-        std::cout << initpos[j] << ", " << initpos[j+1] << ", " << initpos[j+2] << std::endl; 
+        //std::cout << initpos[j] << ", " << initpos[j+1] << ", " << initpos[j+2] << std::endl; 
         j += 3; 
     }
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	//Initialize the vbo to 0, as it will be computed by the GPU
+	glBufferData(GL_ARRAY_BUFFER, 3*NUMBER_PARTICLES*sizeof(glm::vec3), initpos, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	//Create vertex buffer object
 	glGenBuffers(1, &vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	//Initialize the vbo to 0, as it will be computed by the GPU
-	glBufferData(GL_ARRAY_BUFFER, 3*size, initpos, GL_STATIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	time_t start_time;
-	time (&start_time);
-
-	//register the vbo with opengl
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glUseProgram(programID);
-
-	//Vertices are indices [0...N-1] in the vbo
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-	glEnableVertexAttribArray(0);
 }
 
-*/
 /*
  * Main function
  *
@@ -237,8 +254,8 @@ int main (int argc, char** argv) {
 	glutCreateWindow("SPH");	
 	//glutFullScreen();
     //glutGameModeString("1280x720:16@60"); glutEnterGameMode();
-	//printf("OpenGL Version:%s\n",glGetString(GL_VERSION));
-	//printf("GLSL Version  :%s\n",glGetString(GL_SHADING_LANGUAGE_VERSION));
+	printf("OpenGL Version:%s\n",glGetString(GL_VERSION));
+	printf("GLSL Version  :%s\n",glGetString(GL_SHADING_LANGUAGE_VERSION));
 
 	glutDisplayFunc(&disp);
     glutIdleFunc(&idle);
@@ -246,30 +263,6 @@ int main (int argc, char** argv) {
 	glutSpecialFunc(&skeyboard);
     glutMouseFunc(&mouse); 
 
-/*
-    // Initialise GLFW
-    if( !glfwInit() )
-    {
-        fprintf( stderr, "Failed to initialize GLFW\n" );
-        return -1;
-    }
-
-    glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3); // We want OpenGL 3.3
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
-    //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); //We don't want the old OpenGL
-     
-    // Open a window and create its OpenGL context
-    GLFWwindow* window; // (In the accompanying source code, this variable is global)
-    window = glfwCreateWindow( 500,500, "SPH", NULL, NULL);
-    if( window == NULL ){
-        fprintf( stderr, "Failed to open GLFW window.\n" );
-        glfwTerminate();
-        return -1;
-    }
-    glfwMakeContextCurrent(window); // Initialize GLEW 
-*/
 	glewExperimental=GL_TRUE;
 	GLenum err=glewInit();
 	if(err!=GLEW_OK)
@@ -280,25 +273,9 @@ int main (int argc, char** argv) {
 		exit(0);
     }
 
-    std::cout << "Version: " << glGetString(GL_VERSION) << std::endl;
-	//init();
-/*
-    // Ensure we can capture the escape key being pressed below
-    glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);     
-    while (!glfwWindowShouldClose(window))
-    {
-        // Draw nothing, see you in tutorial 2 !
-     
-        // Swap buffers
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-     
-    } // Check if the ESC key was pressed or the window was closed
+	init();
 
-    glfwDestroyWindow(window);
-    glfwTerminate();
-    exit(EXIT_SUCCESS);
-*/	// enter tha main loop and process events:
+	// enter tha main loop and process events:
 	glutMainLoop();
 	return 0;
 }
