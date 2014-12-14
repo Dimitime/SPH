@@ -84,6 +84,7 @@
     <ClCompile Include="SphUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Wall.hpp" />
     <ClInclude Include="Particle.hpp" />
     <ClInclude Include="SphUtils.h" />
   </ItemGroup>

@@ -14,16 +14,23 @@
 #define WINDOW_WIDTH 500
 #define WINDOW_HEIGHT 500
 #define NUMBER_PARTICLES 100
+#define NUMBER_WALLS 3
 
 //OGL Buffer objects
 GLuint programID;
 GLuint vao;
 GLuint vbo;
+GLuint ebo;
 GLuint MatrixID;
 
 //timestep value
 const float dt = 0.01f;
-const float smooth_length = 1.0f;
+//Smoothing length
+const float smooth_length = 0.1f;
+//The ideal density. This is the density of water
+const float rho0 = 1000.0f;
+//The speed of sound in water
+const float c = 10.0f;
 
 //MVP matrices
 // Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
@@ -31,7 +38,7 @@ glm::mat4 Projection = glm::perspective(45.0f, 4.0f / 3.0f, 0.1f, 100.0f);
 
 // Camera matrix
 glm::mat4 View = glm::lookAt(
-    glm::vec3(0,0,5), // Camera is at (4,3,3), in World Space
+    glm::vec3(0,0,3), // Camera is at (4,3,3), in World Space
     glm::vec3(0,0,0), // and looks at the origin
     glm::vec3(0,1,0)  // Head is up (set to 0,-1,0 to look upside-down)
 );
@@ -42,27 +49,51 @@ glm::mat4 Model = glm::mat4(1.0f);  // Changes for each model !
 // Our ModelViewProjection : multiplication of our 3 matrices
 glm::mat4 MVP = Projection * View * Model; // Remember, matrix multiplication is the other way around
 
-SphUtils sph;
+SphUtils sph(smooth_length, rho0, c);
 std::vector<Particle> particles;
+std::vector<Wall> walls;
+
+GLuint offset = 0;
+GLuint elements[] = {
+	offset,offset+1,
+	offset+1,offset+2,
+	offset+2,offset+3,
+	offset+3,offset,
+
+	offset+4,offset+5,
+	offset+5,offset+6,
+	offset+6,offset+7,
+	offset+7,offset+4,
+
+	offset+8,offset+9,
+	offset+9,offset+10,
+	offset+10,offset+11,
+	offset+11,offset+8
+};
 
 /*
- * Draws the particles
+ * Draws the particles and the walls
  */
 void draw_particles() {
-	//register the vbo with opengl
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);	
 	//Extract the positions so we can intialize the particles
-    GLfloat initpos[3*NUMBER_PARTICLES]; 
-    int j=0;
-    for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
-        initpos[j] = particles[i].pos.x;
-        initpos[j+1] = particles[i].pos.y;
-        initpos[j+2] = particles[i].pos.z;
-        //std::cout << initpos[j] << ", " << initpos[j+1] << ", " << initpos[j+2] << std::endl; 
-        j += 3; 
-    }
-	//Initialize the vbo to 0, as it will be computed by the GPU
-	glBufferData(GL_ARRAY_BUFFER, 3*NUMBER_PARTICLES*sizeof(glm::vec3), initpos, GL_DYNAMIC_DRAW);
+
+	GLfloat* data;
+	data = (GLfloat*) glMapBuffer(GL_ARRAY_BUFFER, GL_READ_WRITE);
+	if (data != (GLfloat*) NULL) {
+		int j=0;
+		for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
+			data[j] = particles[i].pos.x;
+			data[j+1] = particles[i].pos.y;
+			data[j+2] = particles[i].pos.z;
+			//std::cout << initpos[j] << ", " << initpos[j+1] << ", " << initpos[j+2] << std::endl; 
+			j+=3; 
+		}
+	}
+	glUnmapBuffer(GL_ARRAY_BUFFER);
+}
+
+void draw_walls() {
+
 }
 
 /*
@@ -79,9 +110,11 @@ void disp(void) {
 	//Colors are indices [N...2N-1] in the vbo
 	//glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*) ( WINDOW_WIDTH * WINDOW_HEIGHT * sizeof(glm::vec3)) );
 	
-	draw_particles();
-
 	glUseProgram(programID);
+	
+	//glBindBuffer(GL_ARRAY_BUFFER, vbo);	
+	draw_particles();
+	draw_walls();
  
 	// Send our transformation to the currently bound shader,
 	// in the "MVP" uniform
@@ -93,13 +126,18 @@ void disp(void) {
 	glEnableVertexAttribArray(0);
 
 	glBindVertexArray(vao);
-	glDrawArrays(GL_POINTS, 0, 100);
+	glDrawArrays(GL_POINTS, 0, NUMBER_PARTICLES);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	glDrawElements(GL_POINTS,4*NUMBER_WALLS,GL_UNSIGNED_INT,elements);
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	//glDrawArrays(GL_LINES, NUMBER_PARTICLES, 4*NUMBER_WALLS);
 
 	//unbind everything
 	//glDisableVertexAttribArray(1);
 	glDisableVertexAttribArray(0);
 	glUseProgram(0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	//glBindBuffer(GL_ARRAY_BUFFER, 0);
 	//glFlush();
 	glutSwapBuffers();
 }
@@ -140,6 +178,8 @@ static void skeyboard(int key, int x, int y) {
  * Advances the scene forward based on a symplectic euler integrator
  */
 void step_scene() {
+	std::cout << "Step" << std::endl;
+	sph.update_density(particles);
 	sph.update_forces(particles);
 	sph.update_posvel(particles, dt);
 }
@@ -231,11 +271,10 @@ GLuint LoadShaders(const char * vertex_file_path, const char * fragment_file_pat
     return ProgramID;
 }
 
-//Initialize all the particles
-void initScene() {
-
+//Init the values ofthe particles
+void initParticles() {
 	//Density of water kg/m^3
-	float density = 999.97f;
+	float density = rho0;
 	//Start with 1 m^3 of water
 	float volume = 1.0f;
 	//Mass in KG of each particle
@@ -250,10 +289,41 @@ void initScene() {
 
     for (int i=-5; i<5; i++) {
         for (int j=-5; j<5; j++) {
+			//for (int k=-5; k<5; k++) {
+			float vel = -0.5f;
+			if (i < 0)
+				vel = 0.5f;
             Particle part(glm::vec3(i/10.0f,j/10.0f,0.0f), glm::vec3(0.0f,0.0f,0.0f), glm::vec3(0.0f,0.0f,0.0f), mass, density, pressure, thermal);
             particles.push_back(part);
+			//}
         }
     }
+}
+
+//Init the values of the walls
+void initWalls() {
+	glm::vec3 c1(-0.6f,0.6f,0.6f);
+	glm::vec3 c2(-0.6f,-1.3f,0.6f);
+	glm::vec3 c3(-0.6f,0.6f,-0.6f);
+	glm::vec3 c4(-0.6f,-1.3f,-0.6f);
+	glm::vec3 c5(0.6f,0.6f,-0.60f);
+	glm::vec3 c6(0.6f,-1.3f,-0.6f);
+	glm::vec3 c7(0.6f,0.6f,0.6f);
+	glm::vec3 c8(0.6f,-1.3f,0.6f);
+
+	Wall w1(c1,c2,c3,c4);
+	Wall w2(c4,c2,c6,c8);
+	Wall w3(c5,c6,c7,c8);
+
+	walls.push_back(w1);
+	walls.push_back(w2);
+	walls.push_back(w3);
+}
+
+//Initialize all the particles and walls
+void initScene() {
+	initParticles();
+	initWalls();
 }
 
 //Initialize OpenGL
@@ -271,12 +341,10 @@ void init() {
 	// Get a handle for our "MVP" uniform.
 	MatrixID = glGetUniformLocation(programID, "MVP");
 
-	const unsigned int size = 100;
-
     initScene();
 
 	//Extract the positions so we can intialize the particles
-    GLfloat initpos[3*NUMBER_PARTICLES]; 
+    GLfloat initpos[3*(NUMBER_PARTICLES+4*NUMBER_WALLS)];
     int j=0;
     for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
         initpos[j] = particles[i].pos.x;
@@ -285,14 +353,46 @@ void init() {
         //std::cout << initpos[j] << ", " << initpos[j+1] << ", " << initpos[j+2] << std::endl; 
         j += 3; 
     }
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	//Initialize the vbo to the initial positions
-	glBufferData(GL_ARRAY_BUFFER, 3*NUMBER_PARTICLES*sizeof(glm::vec3), initpos, GL_DYNAMIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	std::cout << j << std::endl;
+	for (std::vector<Wall>::size_type i=0; i<walls.size(); i++) {
+		initpos[j] = walls[i].c1.x;
+        initpos[j+1] = walls[i].c1.y;
+        initpos[j+2] = walls[i].c1.z;
+	
+		initpos[j+3] = walls[i].c2.x;
+        initpos[j+4] = walls[i].c2.y;
+        initpos[j+5] = walls[i].c2.z;
+
+		initpos[j+6] = walls[i].c3.x;
+        initpos[j+7] = walls[i].c3.y;
+        initpos[j+8] = walls[i].c3.z;
+
+		initpos[j+9] = walls[i].c4.x;
+        initpos[j+10] = walls[i].c4.y;
+        initpos[j+11] = walls[i].c4.z;
+/*
+		initpos[j+12] = walls[i].c1.x;
+        initpos[j+13] = walls[i].c1.y;
+        initpos[j+14] = walls[i].c1.z;*/
+        j += 12; 
+	}
+	std::cout << j << std::endl;
 
 	//Create vertex buffer object
 	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	
+	size_t size = 3*sizeof(GLfloat)*(NUMBER_PARTICLES+4*NUMBER_WALLS);
+	//Initialize the vbo to the initial positions
+	glBufferData(GL_ARRAY_BUFFER, size, initpos, GL_STREAM_DRAW);
+	//glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+	int offset=NUMBER_PARTICLES;
+
+	glGenBuffers(1, &ebo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW);
 }
 
 /*

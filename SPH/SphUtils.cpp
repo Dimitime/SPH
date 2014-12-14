@@ -3,29 +3,68 @@
 #include "SphUtils.h"
 #include <glm/gtc/constants.hpp> 
 
-//A cubic spline kernel function
-float SphUtils::kernel_function(glm::vec3 i, glm::vec3 j, float smooth_length) {
-	//Returns the distance in terms of smooth lenghts
+/*
+ * The kernel W(r,h). In this case, I used a cubic spline in 3 dimensions.
+ */
+float SphUtils::kernel_function(glm::vec3 i, glm::vec3 j) {
+	//Distance in terms of smooth lenghts
 	float q = glm::distance(i, j)/smooth_length;
+
 	float result = -1.0f;
 	if (q >= 2)      result = 0;
 	else if (q > 1)  result = 1.0f/6.0f*(2-q)*(2-q)*(2-q);
 	else if (q <= 1) result = 2.0f/3.0f - q*q + q*q*q/2;
 
-	result *= 2.0f/(3.0f*M_PI*smooth_length*smooth_length*smooth_length);
+	result *= 2.0f/(3.0f*(float)M_PI*smooth_length*smooth_length*smooth_length);
 	return result;
+}
+
+/*
+ * The gradient of the kernel deltaW(r,h). In this case, I used a cubic spline in 3 dimensions.
+ */
+glm::vec3 SphUtils::grad_kernel(glm::vec3 i, glm::vec3 j) {
+	//Returns the distance in terms of smooth lenghts
+	float q = glm::distance(i, j)/smooth_length;
+	float result = -1.0f;
+
+	if (q >= 2)      result = 0;
+	else if (q > 1)  result = -3.0f/6.0f*(2-q)*(2-q);
+	else if (q <= 1) result = -2*q + 3*q*q/2;
+
+	result *= 2.0f/(3.0f*(float)M_PI*smooth_length*smooth_length*smooth_length);
+
+	//Multiply the direction rij = ri - rj by the results
+	glm::vec3 grad = glm::normalize(i-j);
+	grad = grad* result;
+
+	return grad;
 }
 
 /*
  * Updates the densities of all of the particles
  */
 void SphUtils::update_density(std::vector<Particle> &particles) {
+	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
+		for (std::vector<Particle>::size_type j=0; j<particles.size(); j++) {
+			//Pi = sum(mj * wij)
+			particles[i].density += particles[j].mass*kernel_function(particles[i].pos, particles[j].pos);
+		}
+		//the pressure us updated using the speed of sound in water: pi = c^2 (rhoi - rho0)
+		particles[i].pressure = c*c * (particles[i].density - rho0);
+	}
 }
 
 /*
  * Updates the forces acting on all the particles.
  */
 void SphUtils::update_forces(std::vector<Particle> &particles) {
+	//Zero the forces
+	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
+		particles[i].force = glm::vec3(0.0f, 0.0f, 0.0f);
+	}
+	//Add the force from the pressure gradient
+	pressure_forces(particles);
+	//Add the gravity forces
 	gravity_forces(particles);
 }
 
@@ -45,12 +84,27 @@ void SphUtils::update_posvel(std::vector<Particle> &particles, float dt) {
 }
 
 /*
+ * The forces on the particles contributed by the pressures
+ */
+void SphUtils::pressure_forces(std::vector<Particle> &particles) {
+	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
+		for (std::vector<Particle>::size_type j=0; j<particles.size(); j++) {
+			if ( i != j) {
+				//deltaP/rho = F ~ -m*(pi/rhoi^2 + pj/rhoj^2)deltaW 
+				float temp = -particles[j].mass *( particles[i].pressure/(particles[i].density*particles[i].density) + particles[j].pressure/(particles[j].density*particles[j].density) );
+				particles[i].force += temp * grad_kernel(particles[i].pos, particles[j].pos);
+			}
+		}
+	}
+}
+
+/*
  * Apply the gravitational force
  */
 void SphUtils::gravity_forces(std::vector<Particle> &particles) {
 	//std::cout << sph.kernel_function(particles[0].pos, particles[1].pos) << std::endl;
 	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
 		//add the forces. For now, we only have simple gravity: F = mg
-		particles[i].force = particles[i].mass*glm::vec3(0.0, -9.806, 0.0);
+		particles[i].force += particles[i].mass*glm::vec3(0.0, -9.806, 0.0);
 	}
 }
