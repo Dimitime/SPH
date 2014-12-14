@@ -101,9 +101,8 @@ void draw_walls() {
  *
  */	
 void disp(void) {
-    glClearColor(1.0, 1.0, 1.0, 1.0);
-    glClear(GL_COLOR_BUFFER_BIT);
-    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClearColor(0.0, 0.0, 0.0, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     //particles[0].display();
 
 	//glEnableVertexAttribArray(1);
@@ -330,6 +329,9 @@ void initScene() {
 void init() {
 	glClearColor(0.0, 0.0, 0.0, 1.0);
 	glEnable(GL_PROGRAM_POINT_SIZE);
+	glEnable(GL_DEPTH_TEST);
+	// Accept fragment if it closer to the camera than the former one
+	glDepthFunc(GL_LESS);
 
 	//Create the VAO	
 	glGenVertexArrays(1, &vao);
