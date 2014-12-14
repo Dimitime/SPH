@@ -4,7 +4,6 @@
  */
 
 #include <glm/glm.hpp>
-#include <GL/freeglut.h>
 
 class Particle {
 public:
@@ -12,7 +11,7 @@ public:
 	Particle() {
         pos = glm::vec3(0.0f,0.0f,0.0f);
         vel = glm::vec3(0.0f,0.0f,0.0f);
-        accel = glm::vec3(0.0f,0.0f,0.0f);
+        force = glm::vec3(0.0f,0.0f,0.0f);
 
         mass = 0.0f;
         density = 0.0f;
@@ -21,10 +20,10 @@ public:
     }
 
     //Explicit constructor
-	Particle(glm::vec3 npos, glm::vec3 nvel, glm::vec3 naccel, float nmass, float ndensity, float npressure, float nthermal) {
+	Particle(glm::vec3 npos, glm::vec3 nvel, glm::vec3 nforce, float nmass, float ndensity, float npressure, float nthermal) {
         pos = npos;
         vel = nvel;
-        accel = naccel;
+        force = nforce;
         mass = nmass;
         density = ndensity;
         pressure = npressure;
@@ -33,17 +32,17 @@ public:
 
     //Destructor
 	~Particle(){}
-
+/*
     //Displays this particle
     //TODO use a real sphere making algorithm, not this crap
 	void display(){
         glutSolidSphere(1, 10, 10);
     }
-
+*/
 //private:
     glm::vec3 pos;
     glm::vec3 vel;
-    glm::vec3 accel;
+    glm::vec3 force;
 
     float mass;
     float density;

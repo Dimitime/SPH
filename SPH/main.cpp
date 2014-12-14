@@ -8,20 +8,42 @@
 #include <time.h>
 
 #include <GL/glew.h>
+#include <GL/glut.h>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/transform2.hpp>
+
 #include "Particle.hpp"
-//#include <GL/glut.h>
-//#include <GL/freeglut_ext.h>
-//#include <GLFW/glfw3.h>
-//#include <glm/glm.hpp>
 
 #define WINDOW_WIDTH 500
 #define WINDOW_HEIGHT 500
 #define NUMBER_PARTICLES 100
 
+//OGL Buffer objects
 GLuint programID;
 GLuint vao;
 GLuint vbo;
-GLuint vbo2;
+GLuint MatrixID;
+
+//timestep value
+const float dt = 0.01;
+
+//MVP matrices
+
+// Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
+glm::mat4 Projection = glm::perspective(45.0f, 4.0f / 3.0f, 0.1f, 100.0f);
+
+// Camera matrix
+glm::mat4 View = glm::lookAt(
+    glm::vec3(0,0,5), // Camera is at (4,3,3), in World Space
+    glm::vec3(0,0,0), // and looks at the origin
+    glm::vec3(0,1,0)  // Head is up (set to 0,-1,0 to look upside-down)
+);
+
+// Model matrix : an identity matrix (model will be at the origin)
+glm::mat4 Model = glm::mat4(1.0f);  // Changes for each model !
+
+// Our ModelViewProjection : multiplication of our 3 matrices
+glm::mat4 MVP = Projection * View * Model; // Remember, matrix multiplication is the other way around
 
 std::vector<Particle> particles;
 
@@ -62,6 +84,11 @@ void disp(void) {
 	draw_particles();
 
 	glUseProgram(programID);
+ 
+	// Send our transformation to the currently bound shader,
+	// in the "MVP" uniform
+	// For each model you render, since the MVP will be different (at least the M part)
+	glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 
 	//Vertices are indices [0...N-1] in the vbo
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
@@ -107,16 +134,51 @@ static void keyboard(unsigned char key, int x, int y) {
 static void skeyboard(int key, int x, int y) {
 }
 
+///TODO: move to a different file
+////////////////////////////////////////////////////////////////////////////////////////////
+// Physics Functions
+////////////////////////////////////////////////////////////////////////////////////////////
+/*
+ * Advances the scene forward based on a symplectic euler integrator
+ */
+void step_scene() {
+	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
+		//Update the velocities based on the forces
+		// a = F/m
+		//vi+1 = vi + dt*a
+		particles[i].vel = particles[i].vel + dt * particles[i].force/particles[i].mass;
+		//Use the updated velocities to calculate the new positions
+		//xi+1 = xi + dt*xi+1
+		particles[i].pos = particles[i].pos + dt * particles[i].vel;
+	}
+}
+
+/*
+ * Apply the gravitational force
+ */
+void gravity_forces() { 
+	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
+		//add the forces. For now, we only have simple gravity: F = mg
+		particles[i].force = particles[i].mass*glm::vec3(0.0, -9.806, 0.0);
+	}
+}
+
+/*
+ * Updates the forces acting on all the particles.
+ */
+void update_forces() {
+	gravity_forces();
+}
 /* Idle function */
-static void idle( void ) {
+static void idle() {
 	int timems = glutGet(GLUT_ELAPSED_TIME);
 
-	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
-		particles[i].pos.x+=0.00001f;
+	if (timems % 100 == 0) {
+		update_forces();
+		step_scene();
+		//std::cout << particles[0].pos.x << std::endl;
+        glutPostRedisplay();
 	}
-
-	if (timems % 100 == 0)
-        glutPostRedisplay( );
 }
 
 //Loading shelders
@@ -197,14 +259,30 @@ GLuint LoadShaders(const char * vertex_file_path, const char * fragment_file_pat
 
 //Initialize all the particles
 void initScene() {
+
+	//Density of water kg/m^3
+	float density = 999.97f;
+	//Start with 1 m^3 of water
+	float volume = 1.0f;
+	//Mass in KG of each particle
+	float mass = density * volume / NUMBER_PARTICLES;
+	
+	//Pressure of the fluid
+	float pressure = 1.0f;
+
+	//TODO
+	//Thermal energy? I might get rid of this
+	float thermal = 1.0f;
+
     for (int i=-5; i<5; i++) {
         for (int j=-5; j<5; j++) {
-            Particle part(glm::vec3(i/10.0f,j/10.0f,0.0f), glm::vec3(0.0f,0.0f,0.0f), glm::vec3(0.0f,0.0f,0.0f), 1.0f, 1.0f, 1.0f, 1.0f);
+            Particle part(glm::vec3(i/10.0f,j/10.0f,0.0f), glm::vec3(0.0f,0.0f,0.0f), glm::vec3(0.0f,0.0f,0.0f), mass, density, pressure, thermal);
             particles.push_back(part);
         }
     }
 }
 
+//Initialize OpenGL
 void init() {
 	glClearColor(0.0, 0.0, 0.0, 1.0);
 	glEnable(GL_PROGRAM_POINT_SIZE);
@@ -215,6 +293,9 @@ void init() {
 
 	//Load the shaders
 	programID = LoadShaders( "Shaders/sph.vertexshader", "Shaders/sph.fragmentshader" );
+
+	// Get a handle for our "MVP" uniform.
+	MatrixID = glGetUniformLocation(programID, "MVP");
 
 	const unsigned int size = 100;
 
@@ -231,7 +312,7 @@ void init() {
         j += 3; 
     }
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	//Initialize the vbo to 0, as it will be computed by the GPU
+	//Initialize the vbo to the initial positions
 	glBufferData(GL_ARRAY_BUFFER, 3*NUMBER_PARTICLES*sizeof(glm::vec3), initpos, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
