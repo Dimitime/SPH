@@ -2,9 +2,6 @@
 #include <stdlib.h>
 #include <string>
 #include <fstream>
-#include <iostream>
-#include <vector>
-#include <math.h>
 #include <time.h>
 
 #include <GL/glew.h>
@@ -12,7 +9,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform2.hpp>
 
-#include "Particle.hpp"
+#include "SphUtils.h"
 
 #define WINDOW_WIDTH 500
 #define WINDOW_HEIGHT 500
@@ -25,10 +22,10 @@ GLuint vbo;
 GLuint MatrixID;
 
 //timestep value
-const float dt = 0.01;
+const float dt = 0.01f;
+const float smooth_length = 1.0f;
 
 //MVP matrices
-
 // Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
 glm::mat4 Projection = glm::perspective(45.0f, 4.0f / 3.0f, 0.1f, 100.0f);
 
@@ -45,6 +42,7 @@ glm::mat4 Model = glm::mat4(1.0f);  // Changes for each model !
 // Our ModelViewProjection : multiplication of our 3 matrices
 glm::mat4 MVP = Projection * View * Model; // Remember, matrix multiplication is the other way around
 
+SphUtils sph;
 std::vector<Particle> particles;
 
 /*
@@ -142,39 +140,15 @@ static void skeyboard(int key, int x, int y) {
  * Advances the scene forward based on a symplectic euler integrator
  */
 void step_scene() {
-	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
-		//Update the velocities based on the forces
-		// a = F/m
-		//vi+1 = vi + dt*a
-		particles[i].vel = particles[i].vel + dt * particles[i].force/particles[i].mass;
-		//Use the updated velocities to calculate the new positions
-		//xi+1 = xi + dt*xi+1
-		particles[i].pos = particles[i].pos + dt * particles[i].vel;
-	}
+	sph.update_forces(particles);
+	sph.update_posvel(particles, dt);
 }
 
-/*
- * Apply the gravitational force
- */
-void gravity_forces() { 
-	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
-		//add the forces. For now, we only have simple gravity: F = mg
-		particles[i].force = particles[i].mass*glm::vec3(0.0, -9.806, 0.0);
-	}
-}
-
-/*
- * Updates the forces acting on all the particles.
- */
-void update_forces() {
-	gravity_forces();
-}
 /* Idle function */
 static void idle() {
 	int timems = glutGet(GLUT_ELAPSED_TIME);
 
 	if (timems % 100 == 0) {
-		update_forces();
 		step_scene();
 		//std::cout << particles[0].pos.x << std::endl;
         glutPostRedisplay();
