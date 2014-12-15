@@ -24,6 +24,9 @@
     <ClCompile Include="SphUtils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="GLScreenCapturer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Particle.hpp">
@@ -33,6 +36,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Wall.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GLScreenCapturer.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="macros.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

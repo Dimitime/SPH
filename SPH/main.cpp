@@ -8,13 +8,15 @@
 #include <GL/glut.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform2.hpp>
-
+#include "GLScreenCapturer.h"
 #include "SphUtils.h"
 
 #define WINDOW_WIDTH 500
 #define WINDOW_HEIGHT 500
-#define NUMBER_PARTICLES 100
-#define NUMBER_WALLS 3
+#define NUMBER_PARTICLES 1000
+#define NUMBER_WALLS 5
+
+static GLScreenCapturer screenshot("Screen/screenshot-%05d.ppm");
 
 //OGL Buffer objects
 GLuint programID;
@@ -24,15 +26,19 @@ GLuint vbo;
 GLuint MatrixID;
 
 //timestep value
-const float dt = 0.01f;
+const float dt = 0.001f;
+float total_time = 0.0f;
+
 //Smoothing length
 const float smooth_length = 0.1f;
 //The ideal density. This is the density of water
 const float rho0 = 1000.0f;
 //The speed of sound in water
-const float c = 10.0f;
+const float c = 100.0f;
 //An error value used in collision detection
-const float epsilon = 0.05f;
+const float epsilon = 0.007f;
+
+bool toggleSim = true;
 
 //MVP matrices
 // Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
@@ -40,8 +46,8 @@ glm::mat4 Projection = glm::perspective(45.0f, 4.0f / 3.0f, 0.1f, 100.0f);
 
 // Camera matrix
 glm::mat4 View = glm::lookAt(
-    glm::vec3(0,0,3), // Camera is at (4,3,3), in World Space
-    glm::vec3(0,0,0), // and looks at the origin
+    glm::vec3(-0.15,-0.42, 0.15), // Camera is at (4,3,3), in World Space
+    glm::vec3(-0.23,-0.46, 0), // and looks at the origin
     glm::vec3(0,1,0)  // Head is up (set to 0,-1,0 to look upside-down)
 );
 
@@ -116,9 +122,9 @@ void disp(void) {
 	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 	//glDrawElements(GL_POINTS,4*NUMBER_WALLS,GL_UNSIGNED_INT,elements);
 	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glDrawArrays(GL_LINE_LOOP, NUMBER_PARTICLES, 4);
-	glDrawArrays(GL_LINE_LOOP, NUMBER_PARTICLES+4, 4);
-	glDrawArrays(GL_LINE_LOOP, NUMBER_PARTICLES+8, 4);
+	for (int i=0; i< NUMBER_WALLS; i++) {
+		glDrawArrays(GL_LINE_LOOP, NUMBER_PARTICLES+4*i, 4);
+	}
 
 	//unbind everything
 	//glDisableVertexAttribArray(1);
@@ -126,6 +132,11 @@ void disp(void) {
 	glUseProgram(0);
 	//glBindBuffer(GL_ARRAY_BUFFER, 0);
 	//glFlush();
+	//std::cout <<"Writing to image" << std::endl;int timems = glutGet(GLUT_ELAPSED_TIME);
+	if ((int)(total_time*10000) % 100) {
+		std::cout << "Printing at time" << total_time << std::endl;
+		screenshot.capture();
+	}
 	glutSwapBuffers();
 }
 
@@ -133,11 +144,11 @@ void disp(void) {
  * Advances the scene forward based on a symplectic euler integrator
  */
 void step_scene() {
-	std::cout << "Step" << std::endl;
 	sph.update_density(particles);
 	sph.update_forces(particles);
 	sph.update_posvel(particles, dt);
 	sph.collision(particles, walls);
+	total_time += dt;
 }
 
 /* 
@@ -146,9 +157,9 @@ void step_scene() {
 static void idle() {
 	int timems = glutGet(GLUT_ELAPSED_TIME);
 
-	if (timems % 100 == 0) {
-		step_scene();
-		//std::cout << particles[0].pos.x << std::endl;
+	if (timems % 10 == 0) {
+		if (toggleSim)
+			step_scene();
         glutPostRedisplay();
 	}
 }
@@ -169,7 +180,14 @@ void mouse(int button, int state, int x, int y) {
  */ 
 static void keyboard(unsigned char key, int x, int y) {
     switch (key) {
-      case 27:
+		case 's':
+			step_scene();
+			glutPostRedisplay();
+			break;
+		case 32:
+			toggleSim = ! toggleSim;
+			break;
+		case 27:
 	exit(0);
     }
 }
@@ -262,10 +280,10 @@ void initParticles() {
 	//Density of water kg/m^3
 	float density = rho0;
 	//Start with 1 m^3 of water
-	float volume = 1.0f;
+	float volume = 0.1f;
 	//Mass in KG of each particle
-	float mass = density * volume / NUMBER_PARTICLES;
-	
+	float mass = smooth_length*smooth_length*smooth_length*rho0;//density * volume / NUMBER_PARTICLES;//
+	std::cout << "Mass: " << mass << std::endl;
 	//Pressure of the fluid
 	float pressure = 1.0f;
 
@@ -273,17 +291,23 @@ void initParticles() {
 	//Thermal energy? I might get rid of this
 	float thermal = 1.0f;
 
-    for (float i=-5; i<5; i+=1.0) {
-        for (float j=-5; j<5; j+=1.0) {
-			//for (int k=-; k<5; k++) {
-			float vel = -0.5f;
-			if (i < 0)
-				vel = 0.5f;
-            Particle part(glm::vec3(i/10.0f,j/10.0f,0.0f), glm::vec3(0.0f,0.0f,0.0f), glm::vec3(0.0f,0.0f,0.0f), mass, density, pressure, thermal);
-            particles.push_back(part);
-			//}
+	float x = -0.27f;
+	float zvel = 0.0f;
+    for (int i=0; i<10; i++) {
+		float y = -0.49f;
+		x += 0.007f;
+        for (int j=0; j<10; j++) {
+			y += 0.007f;
+			float z = -0.03f;
+			for (int k=0; k<10; k++) {
+				Particle part(glm::vec3(x,y,z), glm::vec3(0.0f,0.0f,zvel*j), glm::vec3(0.0f,0.0f,0.0f), mass, density, pressure, thermal);
+				particles.push_back(part);
+				z += 0.007f;
+			}
         }
     }
+
+	std::cout << particles.size() << std::endl;
 }
 
 //Init the values of the walls
@@ -298,24 +322,36 @@ void initWalls() {
 	glm::vec3 c8(0.6f,-1.3f,0.6f);
 */
 	//The side walls
-	glm::vec3 center1(-0.6f, 0.0f, 0.0f);
+	glm::vec3 center1(-0.3f, -0.44f, 0.0f);
 	glm::vec3 normal1(1.0f, 0.0f, 0.0f);
-	float xlength = 0.6f;
-	float ylength = 1.0f;
+	float xlength = 0.06f;
+	float ylength = 0.06f;
 
-	glm::vec3 center2(0.6f, 0.0f, 0.0f);
+	glm::vec3 center2(-0.18f, -0.44f, 0.0f);
 	glm::vec3 normal2(-1.0f, 0.0f, 0.0f);
 	Wall w1(center1,normal1,xlength,ylength);
 	Wall w2(center2,normal2,xlength,ylength);
 
 	//The bottom wall
-	glm::vec3 center3(0.0f, -1.0f, 0.0f);
+	glm::vec3 center3(-0.24f, -0.5f, 0.0f);
 	glm::vec3 normal3(0.0f, 1.0f, 0.0f);
 	Wall w3(center3,normal3,xlength,xlength);
+
+	//The front wall
+	glm::vec3 center4(-0.24f, -0.44f, -0.06f);
+	glm::vec3 normal4(0.0f, 0.0f,-1.0f);
+	Wall w4(center4,normal4,xlength,xlength);
+
+	//The back wall
+	glm::vec3 center5(-0.24f, -0.44f, 0.06f);
+	glm::vec3 normal5(0.0f, 0.0f, 1.0f);
+	Wall w5(center5,normal5,xlength,xlength);
 
 	//TODO add front and back walls
 	walls.push_back(w1);
 	walls.push_back(w2);
+	walls.push_back(w4);
+	walls.push_back(w5);
 	walls.push_back(w3);
 }
 
@@ -356,8 +392,8 @@ void init() {
         j += 3; 
     }
 
-	std::cout << j << std::endl;
-	for (std::vector<Wall>::size_type i=0; i<walls.size()-1; i++) {
+	//The two side walls
+	for (std::vector<Wall>::size_type i=0; i<2; i++) {
 		initpos[j] = walls[i].center.x;
         initpos[j+1] = walls[i].center.y+walls[i].ylength;
         initpos[j+2] = walls[i].center.z+walls[i].xlength;
@@ -379,9 +415,33 @@ void init() {
         initpos[j+14] = walls[i].c1.z;*/
         j += 12; 
 	}
-	int i = walls.size()-1;
-	std::cout << walls[i].center.x << ", " << walls[i].center.y << ", " << walls[i].center.z << std::endl;
 
+	//The front and back wall
+	for (std::vector<Wall>::size_type i=2; i<4; i++) {
+		initpos[j] = walls[i].center.x+walls[i].xlength;
+        initpos[j+1] = walls[i].center.y+walls[i].ylength;
+        initpos[j+2] = walls[i].center.z;
+	
+		initpos[j+3] = walls[i].center.x+walls[i].xlength;
+        initpos[j+4] = walls[i].center.y-walls[i].ylength;
+        initpos[j+5] = walls[i].center.z;
+
+		initpos[j+6] = walls[i].center.x-walls[i].xlength;
+        initpos[j+7] = walls[i].center.y-walls[i].ylength;
+        initpos[j+8] = walls[i].center.z;
+
+		initpos[j+9] = walls[i].center.x-walls[i].xlength;
+        initpos[j+10] = walls[i].center.y+walls[i].ylength;
+        initpos[j+11] = walls[i].center.z;
+/*
+		initpos[j+12] = walls[i].c1.x;
+        initpos[j+13] = walls[i].c1.y;
+        initpos[j+14] = walls[i].c1.z;*/
+        j += 12; 
+	}
+
+	//The bottom wall
+	int i = walls.size()-1;
 
 	initpos[j] = walls[i].center.x+walls[i].xlength;
     initpos[j+1] = walls[i].center.y;
@@ -398,9 +458,6 @@ void init() {
 	initpos[j+9] = walls[i].center.x-walls[i].xlength;
     initpos[j+10] = walls[i].center.y;
     initpos[j+11] = walls[i].center.z+walls[i].ylength;
-
-	std::cout << j << std::endl;
-
 	//Create vertex buffer object
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
