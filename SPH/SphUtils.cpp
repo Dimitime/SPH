@@ -108,3 +108,36 @@ void SphUtils::gravity_forces(std::vector<Particle> &particles) {
 		particles[i].force += particles[i].mass*glm::vec3(0.0, -9.806, 0.0);
 	}
 }
+
+/*
+ * Detects and handles collisions
+ */
+void SphUtils::collision(std::vector<Particle> &particles, std::vector<Wall> &walls) {
+	detect_collisions(particles,walls);
+	handle_collisions(particles, walls);
+}
+
+/*
+ * Detect collisions.
+ */
+void SphUtils::detect_collisions(std::vector<Particle> &particles, std::vector<Wall> &walls) {
+	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
+		for (std::vector<Wall>::size_type j=0; j<walls.size(); j++) {
+			//Collision has occured if n dot (x - po) <= epsilon
+			if (glm::dot(walls[j].normal, (particles[i].pos-walls[j].center)) <= epsilon) {
+				std::cout << "Collision detected" << std::endl;
+				collisions.push_back(std::make_pair(i,j));
+			}
+		}
+	}
+}
+
+/*
+ * Handle collisions. This is done by just applying an instantaneous impulse.
+ */
+void SphUtils::handle_collisions(std::vector<Particle> &particles, std::vector<Wall> &walls) {
+	for (std::vector<std::pair<int,int>>::size_type i=0; i<collisions.size(); i++) {
+		//Reflect the veloicty across the normal. Instan
+		particles[collisions[i].first].vel = glm::reflect(particles[collisions[i].first].vel, walls[collisions[i].second].normal);
+	}
+}

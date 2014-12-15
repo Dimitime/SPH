@@ -10,18 +10,18 @@ class Wall {
 public:
     //Default constructor
 	Wall() {
-        c1 = glm::vec3(0.0f,0.0f,0.0f);
-        c2 = glm::vec3(0.0f,0.0f,0.0f);
-        c3 = glm::vec3(0.0f,0.0f,0.0f);
-        c4 = glm::vec3(0.0f,0.0f,0.0f);
+        center = glm::vec3(0.0f,0.0f,0.0f);
+        normal = glm::vec3(0.0f,0.0f,0.0f);
+        xlength = 0.0f;
+		ylength = 0.0f;
     }
 
     //Explicit constructor
-	Wall(glm::vec3 nc1, glm::vec3 nc2, glm::vec3 nc3, glm::vec3 nc4) {
-        c1 = nc1;
-		c2 = nc2;
-		c3 = nc3;
-		c4 = nc4;
+	Wall(glm::vec3 ncenter, glm::vec3 nnormal, float nxlength, float nylength) {
+		center = ncenter;
+		normal = nnormal;
+		xlength = nxlength;
+		ylength = nylength;
     }
 
     //Destructor
@@ -31,8 +31,8 @@ public:
 	}
 
 //private:
-    glm::vec3 c1;
-    glm::vec3 c2;
-    glm::vec3 c3;
-    glm::vec3 c4;
+    glm::vec3 normal;
+    glm::vec3 center;
+	float xlength;
+	float ylength;
 };

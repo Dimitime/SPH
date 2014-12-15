@@ -20,7 +20,7 @@
 GLuint programID;
 GLuint vao;
 GLuint vbo;
-GLuint ebo;
+//GLuint ebo;
 GLuint MatrixID;
 
 //timestep value
@@ -31,6 +31,8 @@ const float smooth_length = 0.1f;
 const float rho0 = 1000.0f;
 //The speed of sound in water
 const float c = 10.0f;
+//An error value used in collision detection
+const float epsilon = 0.05f;
 
 //MVP matrices
 // Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
@@ -49,27 +51,9 @@ glm::mat4 Model = glm::mat4(1.0f);  // Changes for each model !
 // Our ModelViewProjection : multiplication of our 3 matrices
 glm::mat4 MVP = Projection * View * Model; // Remember, matrix multiplication is the other way around
 
-SphUtils sph(smooth_length, rho0, c);
+SphUtils sph(smooth_length, rho0, c, epsilon);
 std::vector<Particle> particles;
 std::vector<Wall> walls;
-
-GLuint offset = 0;
-GLuint elements[] = {
-	offset,offset+1,
-	offset+1,offset+2,
-	offset+2,offset+3,
-	offset+3,offset,
-
-	offset+4,offset+5,
-	offset+5,offset+6,
-	offset+6,offset+7,
-	offset+7,offset+4,
-
-	offset+8,offset+9,
-	offset+9,offset+10,
-	offset+10,offset+11,
-	offset+11,offset+8
-};
 
 /*
  * Draws the particles and the walls
@@ -96,9 +80,11 @@ void draw_walls() {
 
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////
+// Rendering and Animation Functions
+////////////////////////////////////////////////////////////////////////////////////////////
 /*
- * Update function for GLUT
- *
+ * display function for GLUT
  */	
 void disp(void) {
     glClearColor(0.0, 0.0, 0.0, 1.0);
@@ -127,10 +113,12 @@ void disp(void) {
 	glBindVertexArray(vao);
 	glDrawArrays(GL_POINTS, 0, NUMBER_PARTICLES);
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glDrawElements(GL_POINTS,4*NUMBER_WALLS,GL_UNSIGNED_INT,elements);
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	//glDrawElements(GL_POINTS,4*NUMBER_WALLS,GL_UNSIGNED_INT,elements);
 	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	//glDrawArrays(GL_LINES, NUMBER_PARTICLES, 4*NUMBER_WALLS);
+	glDrawArrays(GL_LINE_LOOP, NUMBER_PARTICLES, 4);
+	glDrawArrays(GL_LINE_LOOP, NUMBER_PARTICLES+4, 4);
+	glDrawArrays(GL_LINE_LOOP, NUMBER_PARTICLES+8, 4);
 
 	//unbind everything
 	//glDisableVertexAttribArray(1);
@@ -139,6 +127,30 @@ void disp(void) {
 	//glBindBuffer(GL_ARRAY_BUFFER, 0);
 	//glFlush();
 	glutSwapBuffers();
+}
+
+/*
+ * Advances the scene forward based on a symplectic euler integrator
+ */
+void step_scene() {
+	std::cout << "Step" << std::endl;
+	sph.update_density(particles);
+	sph.update_forces(particles);
+	sph.update_posvel(particles, dt);
+	sph.collision(particles, walls);
+}
+
+/* 
+ * Idle function 
+ */
+static void idle() {
+	int timems = glutGet(GLUT_ELAPSED_TIME);
+
+	if (timems % 100 == 0) {
+		step_scene();
+		//std::cout << particles[0].pos.x << std::endl;
+        glutPostRedisplay();
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -167,31 +179,6 @@ static void keyboard(unsigned char key, int x, int y) {
  *
  */ 
 static void skeyboard(int key, int x, int y) {
-}
-
-///TODO: move to a different file
-////////////////////////////////////////////////////////////////////////////////////////////
-// Physics Functions
-////////////////////////////////////////////////////////////////////////////////////////////
-/*
- * Advances the scene forward based on a symplectic euler integrator
- */
-void step_scene() {
-	std::cout << "Step" << std::endl;
-	sph.update_density(particles);
-	sph.update_forces(particles);
-	sph.update_posvel(particles, dt);
-}
-
-/* Idle function */
-static void idle() {
-	int timems = glutGet(GLUT_ELAPSED_TIME);
-
-	if (timems % 100 == 0) {
-		step_scene();
-		//std::cout << particles[0].pos.x << std::endl;
-        glutPostRedisplay();
-	}
 }
 
 //Loading shelders
@@ -286,9 +273,9 @@ void initParticles() {
 	//Thermal energy? I might get rid of this
 	float thermal = 1.0f;
 
-    for (int i=-5; i<5; i++) {
-        for (int j=-5; j<5; j++) {
-			//for (int k=-5; k<5; k++) {
+    for (float i=-5; i<5; i+=1.0) {
+        for (float j=-5; j<5; j+=1.0) {
+			//for (int k=-; k<5; k++) {
 			float vel = -0.5f;
 			if (i < 0)
 				vel = 0.5f;
@@ -301,7 +288,7 @@ void initParticles() {
 
 //Init the values of the walls
 void initWalls() {
-	glm::vec3 c1(-0.6f,0.6f,0.6f);
+/*	glm::vec3 c1(-0.6f,0.6f,0.6f);
 	glm::vec3 c2(-0.6f,-1.3f,0.6f);
 	glm::vec3 c3(-0.6f,0.6f,-0.6f);
 	glm::vec3 c4(-0.6f,-1.3f,-0.6f);
@@ -309,11 +296,24 @@ void initWalls() {
 	glm::vec3 c6(0.6f,-1.3f,-0.6f);
 	glm::vec3 c7(0.6f,0.6f,0.6f);
 	glm::vec3 c8(0.6f,-1.3f,0.6f);
+*/
+	//The side walls
+	glm::vec3 center1(-0.6f, 0.0f, 0.0f);
+	glm::vec3 normal1(1.0f, 0.0f, 0.0f);
+	float xlength = 0.6f;
+	float ylength = 1.0f;
 
-	Wall w1(c1,c2,c3,c4);
-	Wall w2(c4,c2,c6,c8);
-	Wall w3(c5,c6,c7,c8);
+	glm::vec3 center2(0.6f, 0.0f, 0.0f);
+	glm::vec3 normal2(-1.0f, 0.0f, 0.0f);
+	Wall w1(center1,normal1,xlength,ylength);
+	Wall w2(center2,normal2,xlength,ylength);
 
+	//The bottom wall
+	glm::vec3 center3(0.0f, -1.0f, 0.0f);
+	glm::vec3 normal3(0.0f, 1.0f, 0.0f);
+	Wall w3(center3,normal3,xlength,xlength);
+
+	//TODO add front and back walls
 	walls.push_back(w1);
 	walls.push_back(w2);
 	walls.push_back(w3);
@@ -357,28 +357,48 @@ void init() {
     }
 
 	std::cout << j << std::endl;
-	for (std::vector<Wall>::size_type i=0; i<walls.size(); i++) {
-		initpos[j] = walls[i].c1.x;
-        initpos[j+1] = walls[i].c1.y;
-        initpos[j+2] = walls[i].c1.z;
+	for (std::vector<Wall>::size_type i=0; i<walls.size()-1; i++) {
+		initpos[j] = walls[i].center.x;
+        initpos[j+1] = walls[i].center.y+walls[i].ylength;
+        initpos[j+2] = walls[i].center.z+walls[i].xlength;
 	
-		initpos[j+3] = walls[i].c2.x;
-        initpos[j+4] = walls[i].c2.y;
-        initpos[j+5] = walls[i].c2.z;
+		initpos[j+3] = walls[i].center.x;
+        initpos[j+4] = walls[i].center.y-walls[i].ylength;
+        initpos[j+5] = walls[i].center.z+walls[i].xlength;
 
-		initpos[j+6] = walls[i].c3.x;
-        initpos[j+7] = walls[i].c3.y;
-        initpos[j+8] = walls[i].c3.z;
+		initpos[j+6] = walls[i].center.x;
+        initpos[j+7] = walls[i].center.y-walls[i].ylength;
+        initpos[j+8] = walls[i].center.z-walls[i].xlength;
 
-		initpos[j+9] = walls[i].c4.x;
-        initpos[j+10] = walls[i].c4.y;
-        initpos[j+11] = walls[i].c4.z;
+		initpos[j+9] = walls[i].center.x;
+        initpos[j+10] = walls[i].center.y+walls[i].ylength;
+        initpos[j+11] = walls[i].center.z-walls[i].xlength;
 /*
 		initpos[j+12] = walls[i].c1.x;
         initpos[j+13] = walls[i].c1.y;
         initpos[j+14] = walls[i].c1.z;*/
         j += 12; 
 	}
+	int i = walls.size()-1;
+	std::cout << walls[i].center.x << ", " << walls[i].center.y << ", " << walls[i].center.z << std::endl;
+
+
+	initpos[j] = walls[i].center.x+walls[i].xlength;
+    initpos[j+1] = walls[i].center.y;
+    initpos[j+2] = walls[i].center.z+walls[i].ylength;
+	
+	initpos[j+3] = walls[i].center.x+walls[i].xlength;
+    initpos[j+4] = walls[i].center.y;
+    initpos[j+5] = walls[i].center.z-walls[i].ylength;
+
+	initpos[j+6] = walls[i].center.x-walls[i].xlength;
+    initpos[j+7] = walls[i].center.y;
+    initpos[j+8] = walls[i].center.z-walls[i].ylength;
+
+	initpos[j+9] = walls[i].center.x-walls[i].xlength;
+    initpos[j+10] = walls[i].center.y;
+    initpos[j+11] = walls[i].center.z+walls[i].ylength;
+
 	std::cout << j << std::endl;
 
 	//Create vertex buffer object
@@ -389,13 +409,13 @@ void init() {
 	//Initialize the vbo to the initial positions
 	glBufferData(GL_ARRAY_BUFFER, size, initpos, GL_STREAM_DRAW);
 	//glBindBuffer(GL_ARRAY_BUFFER, 0);
-
+/*
 	int offset=NUMBER_PARTICLES;
 
 	glGenBuffers(1, &ebo);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW);
-}
+*/}
 
 /*
  * Main function
