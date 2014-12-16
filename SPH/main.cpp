@@ -30,13 +30,13 @@ const float dt = 0.001f;
 float total_time = 0.0f;
 
 //Smoothing length
-const float smooth_length = 0.1f;
+const float smooth_length = 0.01f;
 //The ideal density. This is the density of water
-const float rho0 = 1000.0f;
+const float rho0 = 10.0f;
 //The speed of sound in water
 const float c = 100.0f;
 //An error value used in collision detection
-const float epsilon = 0.007f;
+const float epsilon = 0.01f;
 
 bool toggleSim = true;
 
@@ -133,10 +133,10 @@ void disp(void) {
 	//glBindBuffer(GL_ARRAY_BUFFER, 0);
 	//glFlush();
 	//std::cout <<"Writing to image" << std::endl;int timems = glutGet(GLUT_ELAPSED_TIME);
-	if ((int)(total_time*10000) % 100) {
-		std::cout << "Printing at time" << total_time << std::endl;
-		screenshot.capture();
-	}
+	//if ((int)(total_time*10000) % 100) {
+	//	std::cout << "Printing at time" << total_time << std::endl;
+	//	screenshot.capture();
+	//}
 	glutSwapBuffers();
 }
 
@@ -144,10 +144,17 @@ void disp(void) {
  * Advances the scene forward based on a symplectic euler integrator
  */
 void step_scene() {
+	sph.update_cells(particles);
+	std::cout << "Grid updated" << std::endl;
 	sph.update_density(particles);
+	std::cout << "Density updated" << std::endl;
 	sph.update_forces(particles);
+	std::cout << "Forces updated" << std::endl;
 	sph.update_posvel(particles, dt);
+	std::cout << "Pos/Vel updated" << std::endl;
 	sph.collision(particles, walls);
+
+	std::cout << "Step done" << std::endl;
 	total_time += dt;
 }
 
@@ -157,7 +164,7 @@ void step_scene() {
 static void idle() {
 	int timems = glutGet(GLUT_ELAPSED_TIME);
 
-	if (timems % 10 == 0) {
+	if (timems % 100 == 0) {
 		if (toggleSim)
 			step_scene();
         glutPostRedisplay();

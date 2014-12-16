@@ -21,15 +21,20 @@ public:
 		rho0 = nrho0;
 		c = nc;
 		epsilon = nepsilon;
+
+		cell_dimensions = 2*nsmooth_length;
+		maxx=maxy=maxz=minx=miny=minz=0.0f;
     }
 
     //Destructor
 	~SphUtils(){}
 
-	//Kernel function for the SPH
+	//Kernel/grad/laplace functions for the SPH
 	float kernel_function(glm::vec3 i, glm::vec3 j);
 	glm::vec3 grad_kernel(glm::vec3 i, glm::vec3 j);
 
+	//Public callers
+	void update_cells(std::vector<Particle> &particles);
 	void update_density(std::vector<Particle> &particles);
 	void update_forces(std::vector<Particle> &particles);
 	void update_posvel(std::vector<Particle> &particles, float dt);
@@ -40,8 +45,16 @@ private:
 	float rho0;
 	float c;
 	float epsilon;
+
 	std::vector<std::pair<int,int>> collisions;
 
+	//My attempt at accelerating. This array containts a list of indices of praticles that are in a given cell. For example,
+	//call [0] = {1,3,7,100} means that particles 1,3,7,100 are located in cell 0.
+	float maxx, maxy, maxz, minx, miny, minz;
+	float cell_dimensions;
+	std::vector<std::vector<int>> cells;
+
+	//Helper functions for the above
 	void gravity_forces(std::vector<Particle> &particles);
 	void pressure_forces(std::vector<Particle> &particles);
 	void viscosity_forces(std::vector<Particle> &particles);
