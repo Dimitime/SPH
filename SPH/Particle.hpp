@@ -11,7 +11,7 @@ public:
 	Particle() {
         pos = glm::vec3(0.0f,0.0f,0.0f);
         vel = glm::vec3(0.0f,0.0f,0.0f);
-        force = glm::vec3(0.0f,0.0f,0.0f);
+        accel = glm::vec3(0.0f,0.0f,0.0f);
 
         mass = 0.0f;
         density = 0.0f;
@@ -23,7 +23,7 @@ public:
 	Particle(glm::vec3 npos, glm::vec3 nvel, glm::vec3 nforce, float nmass, float ndensity, float npressure, float nthermal) {
         pos = npos;
         vel = nvel;
-        force = nforce;
+        accel = nforce;
         mass = nmass;
         density = ndensity;
         pressure = npressure;
@@ -42,7 +42,7 @@ public:
 //private:
     glm::vec3 pos;
     glm::vec3 vel;
-    glm::vec3 force;
+    glm::vec3 accel;
 
     float mass;
     float density;

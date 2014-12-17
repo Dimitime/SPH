@@ -30,13 +30,13 @@ const float dt = 0.001f;
 float total_time = 0.0f;
 
 //Smoothing length
-const float smooth_length = 1000.0f/NUMBER_PARTICLES;
+const float smooth_length = 1300.0f/NUMBER_PARTICLES;
 //The ideal density. This is the density of water
 const float rho0 = 1000.0f;
 //The speed of sound in water
 const float c = 100.0f;
 //An error value used in collision detection
-const float epsilon = 0.01f;
+const float epsilon = 0.1f;
 
 bool toggleSim = true;
 
@@ -133,10 +133,10 @@ void disp(void) {
 	//glBindBuffer(GL_ARRAY_BUFFER, 0);
 	//glFlush();
 	//std::cout <<"Writing to image" << std::endl;int timems = glutGet(GLUT_ELAPSED_TIME);
-	//if ((int)(total_time*10000) % 100) {
-	//	std::cout << "Printing at time" << total_time << std::endl;
-	//	screenshot.capture();
-	//}
+	if ((int)(total_time*10000) % 100) {
+		std::cout << "Printing at time" << total_time << std::endl;
+		screenshot.capture();
+	}
 	glutSwapBuffers();
 }
 
@@ -154,7 +154,7 @@ void step_scene() {
 	//std::cout << "Pos/Vel updated" << std::endl;
 	sph.collision(particles, walls);
 
-	std::cout << "Step done" << std::endl;
+	//std::cout << "Step done" << std::endl;
 	total_time += dt;
 }
 
@@ -287,9 +287,9 @@ void initParticles() {
 	//Density of water kg/m^3
 	float density = rho0+epsilon;
 	//Start with 1 m^3 of water
-	float volume = 0.001f;
+	float volume = 1.0f;
 	//Mass in KG of each particle
-	float mass = smooth_length*smooth_length*smooth_length*rho0;//density * volume / NUMBER_PARTICLES;//;//
+	float mass = smooth_length*smooth_length*smooth_length*rho0;//density * volume / NUMBER_PARTICLES;
 	std::cout << "Mass: " << mass << std::endl;
 	//Pressure of the fluid
 	float pressure = 1.0f;
@@ -298,18 +298,18 @@ void initParticles() {
 	//Thermal energy? I might get rid of this
 	float thermal = 1.0f;
 
-	float x = -4.9f;
+	float x = -4.5f;
 	float zvel = 0.0f;
     for (int i=0; i<10; i++) {
-		float y = -4.9f;
+		float y = -4.5f;
 		x += smooth_length/2.0f;
         for (int j=0; j<10; j++) {
 			y += smooth_length/2.0f;
-			float z = -4.9f;
+			float z = -4.5f;
 			for (int k=0; k<10; k++) {
+				z += smooth_length/2.0f;
 				Particle part(glm::vec3(x,y,z), glm::vec3(0.0f,0.0f,zvel*j), glm::vec3(0.0f,0.0f,0.0f), mass, density, pressure, thermal);
 				particles.push_back(part);
-				z += smooth_length/2.0f;
 			}
         }
     }

@@ -33,6 +33,7 @@ public:
 	//Kernel/grad/laplace functions for the SPH
 	float kernel_function(glm::vec3 i, glm::vec3 j);
 	glm::vec3 grad_kernel(glm::vec3 i, glm::vec3 j);
+	float SphUtils::lap_kernel(glm::vec3 i, glm::vec3 j);
 
 	//Public callers
 	void update_cells(std::vector<Particle> &particles);
