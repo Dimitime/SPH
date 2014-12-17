@@ -30,9 +30,9 @@ const float dt = 0.001f;
 float total_time = 0.0f;
 
 //Smoothing length
-const float smooth_length = 0.01f;
+const float smooth_length = 1000.0f/NUMBER_PARTICLES;
 //The ideal density. This is the density of water
-const float rho0 = 10.0f;
+const float rho0 = 1000.0f;
 //The speed of sound in water
 const float c = 100.0f;
 //An error value used in collision detection
@@ -46,8 +46,8 @@ glm::mat4 Projection = glm::perspective(45.0f, 4.0f / 3.0f, 0.1f, 100.0f);
 
 // Camera matrix
 glm::mat4 View = glm::lookAt(
-    glm::vec3(-0.15,-0.42, 0.15), // Camera is at (4,3,3), in World Space
-    glm::vec3(-0.23,-0.46, 0), // and looks at the origin
+    glm::vec3(3, 3, 15), // Camera is at (4,3,3), in World Space
+    glm::vec3(0.0,0.0, 0.0), // and looks at the origin
     glm::vec3(0,1,0)  // Head is up (set to 0,-1,0 to look upside-down)
 );
 
@@ -57,7 +57,7 @@ glm::mat4 Model = glm::mat4(1.0f);  // Changes for each model !
 // Our ModelViewProjection : multiplication of our 3 matrices
 glm::mat4 MVP = Projection * View * Model; // Remember, matrix multiplication is the other way around
 
-SphUtils sph(smooth_length, rho0, c, epsilon);
+SphUtils sph(smooth_length, rho0, c, dt, epsilon);
 std::vector<Particle> particles;
 std::vector<Wall> walls;
 
@@ -145,13 +145,13 @@ void disp(void) {
  */
 void step_scene() {
 	sph.update_cells(particles);
-	std::cout << "Grid updated" << std::endl;
+	//std::cout << "Grid updated" << std::endl;
 	sph.update_density(particles);
-	std::cout << "Density updated" << std::endl;
+	//std::cout << "Density updated" << std::endl;
 	sph.update_forces(particles);
-	std::cout << "Forces updated" << std::endl;
-	sph.update_posvel(particles, dt);
-	std::cout << "Pos/Vel updated" << std::endl;
+	//std::cout << "Forces updated" << std::endl;
+	sph.update_posvel(particles);
+	//std::cout << "Pos/Vel updated" << std::endl;
 	sph.collision(particles, walls);
 
 	std::cout << "Step done" << std::endl;
@@ -285,11 +285,11 @@ GLuint LoadShaders(const char * vertex_file_path, const char * fragment_file_pat
 //Init the values ofthe particles
 void initParticles() {
 	//Density of water kg/m^3
-	float density = rho0;
+	float density = rho0+epsilon;
 	//Start with 1 m^3 of water
-	float volume = 0.1f;
+	float volume = 0.001f;
 	//Mass in KG of each particle
-	float mass = smooth_length*smooth_length*smooth_length*rho0;//density * volume / NUMBER_PARTICLES;//
+	float mass = smooth_length*smooth_length*smooth_length*rho0;//density * volume / NUMBER_PARTICLES;//;//
 	std::cout << "Mass: " << mass << std::endl;
 	//Pressure of the fluid
 	float pressure = 1.0f;
@@ -298,18 +298,18 @@ void initParticles() {
 	//Thermal energy? I might get rid of this
 	float thermal = 1.0f;
 
-	float x = -0.27f;
+	float x = -4.9f;
 	float zvel = 0.0f;
     for (int i=0; i<10; i++) {
-		float y = -0.49f;
-		x += 0.007f;
+		float y = -4.9f;
+		x += smooth_length/2.0f;
         for (int j=0; j<10; j++) {
-			y += 0.007f;
-			float z = -0.03f;
+			y += smooth_length/2.0f;
+			float z = -4.9f;
 			for (int k=0; k<10; k++) {
 				Particle part(glm::vec3(x,y,z), glm::vec3(0.0f,0.0f,zvel*j), glm::vec3(0.0f,0.0f,0.0f), mass, density, pressure, thermal);
 				particles.push_back(part);
-				z += 0.007f;
+				z += smooth_length/2.0f;
 			}
         }
     }
@@ -329,32 +329,31 @@ void initWalls() {
 	glm::vec3 c8(0.6f,-1.3f,0.6f);
 */
 	//The side walls
-	glm::vec3 center1(-0.3f, -0.44f, 0.0f);
+	glm::vec3 center1(-5.0f, 0.0f, 0.0f);
 	glm::vec3 normal1(1.0f, 0.0f, 0.0f);
-	float xlength = 0.06f;
-	float ylength = 0.06f;
+	float xlength = 5.0f;
+	float ylength = 5.0f;
 
-	glm::vec3 center2(-0.18f, -0.44f, 0.0f);
+	glm::vec3 center2(5.0f, 0.0f, 0.0f);
 	glm::vec3 normal2(-1.0f, 0.0f, 0.0f);
 	Wall w1(center1,normal1,xlength,ylength);
 	Wall w2(center2,normal2,xlength,ylength);
 
 	//The bottom wall
-	glm::vec3 center3(-0.24f, -0.5f, 0.0f);
+	glm::vec3 center3(0.0f, -5.0f, 0.0f);
 	glm::vec3 normal3(0.0f, 1.0f, 0.0f);
 	Wall w3(center3,normal3,xlength,xlength);
 
 	//The front wall
-	glm::vec3 center4(-0.24f, -0.44f, -0.06f);
+	glm::vec3 center4(0.0f, 0.0f,5.0);
 	glm::vec3 normal4(0.0f, 0.0f,-1.0f);
 	Wall w4(center4,normal4,xlength,xlength);
 
 	//The back wall
-	glm::vec3 center5(-0.24f, -0.44f, 0.06f);
-	glm::vec3 normal5(0.0f, 0.0f, 1.0f);
+	glm::vec3 center5(0.0f, 0.0f, -5.0f);
+	glm::vec3 normal5(0.0f, 0.0f,1.0f);
 	Wall w5(center5,normal5,xlength,xlength);
 
-	//TODO add front and back walls
 	walls.push_back(w1);
 	walls.push_back(w2);
 	walls.push_back(w4);
@@ -416,10 +415,6 @@ void init() {
 		initpos[j+9] = walls[i].center.x;
         initpos[j+10] = walls[i].center.y+walls[i].ylength;
         initpos[j+11] = walls[i].center.z-walls[i].xlength;
-/*
-		initpos[j+12] = walls[i].c1.x;
-        initpos[j+13] = walls[i].c1.y;
-        initpos[j+14] = walls[i].c1.z;*/
         j += 12; 
 	}
 
@@ -440,10 +435,6 @@ void init() {
 		initpos[j+9] = walls[i].center.x-walls[i].xlength;
         initpos[j+10] = walls[i].center.y+walls[i].ylength;
         initpos[j+11] = walls[i].center.z;
-/*
-		initpos[j+12] = walls[i].c1.x;
-        initpos[j+13] = walls[i].c1.y;
-        initpos[j+14] = walls[i].c1.z;*/
         j += 12; 
 	}
 

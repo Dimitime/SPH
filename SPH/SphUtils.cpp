@@ -11,7 +11,9 @@ void SphUtils::update_cells(std::vector<Particle> &particles) {
 	//clear our previous cells
 	cells.clear();
 	//float maxx, maxy, maxz, minx, miny, minz;
-	maxx=maxy=maxz=minx=miny=minz=0.0f;
+	maxx=minx=particles[0].pos.x;
+	maxy=miny=particles[0].pos.y;
+	maxz=minz=particles[0].pos.z;
 	cell_dimensions = 2*smooth_length;
 	//Loop through the particles to get the min and max values to determine how many cells we need.
 	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
@@ -23,21 +25,23 @@ void SphUtils::update_cells(std::vector<Particle> &particles) {
 		if (particles[i].pos.z > maxz)  maxz = particles[i].pos.z;
 	}
 
-	std::cout << "Min/Max: { (" << minx << ", " << maxx << ") " << " (" << miny << ", " << maxy << ")  " << " (" << minz << ", " << maxz << ")  " << std::endl;
-	std::cout << "Dimensions" << cell_dimensions << std::endl;
+	//std::cout << "Min/Max: { (" << minx << ", " << maxx << ") " << " (" << miny << ", " << maxy << ")  " << " (" << minz << ", " << maxz << ")  " << std::endl;
+	//std::cout << "Dimensions" << cell_dimensions << std::endl;
 
-	int nx = (int)ceil( (maxx-minx)/cell_dimensions);
-	int ny = (int)ceil( (maxy-miny)/cell_dimensions);
-	int nz = (int)ceil( (maxz-minz)/cell_dimensions);
+	int nx = (int)ceil( (maxx-minx)/cell_dimensions)+1;
+	int ny = (int)ceil( (maxy-miny)/cell_dimensions)+1;
+	int nz = (int)ceil( (maxz-minz)/cell_dimensions)+1;
 	size_t n =  nx*ny*nz;
 
-	std::cout << "We need " << n << "=" << nx << "*" << ny << "*" << nz << " buckets" << std::endl;
+	//std::cout << "We need " << n << "=" << nx << "*" << ny << "*" << nz << " buckets" << std::endl;
 
 	//Preallocate the size of the vector
 	for (std::vector<std::vector<int>>::size_type i=0; i<n; i++) {
 		std::vector<int> temp;
 		cells.push_back(temp);
 	}
+
+	//std::cout << cells.size() << std::endl;
 
 	for (std::vector<Particle>::size_type m=0; m<particles.size(); m++) {
 		//Turn the x,y,z coordinates of the particles into a cell index
@@ -48,7 +52,14 @@ void SphUtils::update_cells(std::vector<Particle> &particles) {
 		//Get the flattened array index
 		unsigned int i = x + nx*y + (nx*ny + ny)*z;
 
-		//std::cout << i << std::endl;
+		//std::cout << "[" << m << "]" << i  << " = " << x << ", " << y << ", " << z <<std::endl;
+
+		if (particles[m].pos.z > 8.78) {
+			//std::cout << "Pos: " << particles[m].pos.x << ", " << particles[m].pos.y << ", " << particles[m].pos.z << std::endl;
+			//std::cout << "Extracted xyz: " << x << ", " << y << ", " << z << std::endl;
+
+			//std::cout << m << ", " << i << "/" << cells.size() << std::endl;
+		}
 		
 		cells[i].push_back(m);
 	}
@@ -67,6 +78,7 @@ void SphUtils::update_cells(std::vector<Particle> &particles) {
 	
 	std::cout << "TEST: " << test <<std::endl;
 */
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -112,7 +124,7 @@ glm::vec3 SphUtils::grad_kernel(glm::vec3 i, glm::vec3 j) {
 	//	result = -15.0f/((float)M_PI*pow(smooth_length,7))*(smooth_length-q)*(smooth_length-q);
 
 	//std::cout << result << std::endl;
-	result *= 2.0f/(3.0f*(float)M_PI*smooth_length*smooth_length*smooth_length);
+	result *= 2.0f/(3.0f*(float)M_PI*smooth_length*smooth_length*smooth_length*smooth_length);
 
 	//Multiply the direction rij = ri - rj by the results
 	glm::vec3 grad = glm::normalize(i-j);
@@ -125,9 +137,9 @@ glm::vec3 SphUtils::grad_kernel(glm::vec3 i, glm::vec3 j) {
  * Updates the densities of all of the particles
  */
 void SphUtils::update_density(std::vector<Particle> &particles) {
-	int nx = (int)ceil( (maxx-minx)/cell_dimensions);
-	int ny = (int)ceil( (maxy-miny)/cell_dimensions);
-	int nz = (int)ceil( (maxz-minz)/cell_dimensions);
+	int nx = (int)ceil( (maxx-minx)/cell_dimensions)+1;
+	int ny = (int)ceil( (maxy-miny)/cell_dimensions)+1;
+	int nz = (int)ceil( (maxz-minz)/cell_dimensions)+1;
 
 	//loop through the cells
 	for (std::vector<std::vector<int>>::size_type i=0; i<cells.size(); i++) {
@@ -154,7 +166,7 @@ void SphUtils::update_density(std::vector<Particle> &particles) {
 						int tz = z+c;
 
 						//If this grid is out of bounds we skip it
-						if ( (tx<0) || (tx>nx-1) || (ty<0) || (ty>nx-1) || (tz <0) || (tz>nz-1) ) {}
+						if ( (tx<0) || (tx>nx-1) || (ty<0) || (ty>ny-1) || (tz<0) || (tz>nz-1) ) {}
 						else {
 							unsigned int j = tx + nx*ty+ (nx*ny + ny)*tz;
 							//if (p1_index == 0) {
@@ -173,11 +185,11 @@ void SphUtils::update_density(std::vector<Particle> &particles) {
 			}
 			//}
 			particles[p1_index].density = density;
-			particles[p1_index].pressure = 1.0f* (pow(particles[p1_index].density/rho0, 7)-1); //std::cout << pow(particles[p1_index].density/rho0, 7)-1 << std::endl;
+			particles[p1_index].pressure = 1.0f* (pow(particles[p1_index].density/rho0, 7)-1); //if (pow(particles[p1_index].density/rho0, 7)-1 > 2) std::cout << pow(particles[p1_index].density/rho0, 7)-1 << std::endl;
 			//the pressure us updated using the speed of sound in water: pi = c^2 (rhoi - rho0)
 			//particles[p1_index].pressure = 10 * (particles[p1_index].density - rho0); std::cout << 10 * (particles[p1_index].density - rho0) << std::endl;
-			if (particles[p1_index].pressure > 100)
-				std::cout << "Density for " << p1_index << ": " << particles[p1_index].density << "Pressure: " << particles[p1_index].pressure << std::endl;
+			//if (particles[p1_index].pressure > 100)
+			//	std::cout << "Density for " << p1_index << ": " << particles[p1_index].density << "Pressure: " << particles[p1_index].pressure << std::endl;
 		}
 	}
 }
@@ -194,19 +206,21 @@ void SphUtils::update_forces(std::vector<Particle> &particles) {
 		//add the forces. For now, we only have simple gravity: F = mg
 			particles[i].force = glm::vec3(0.0f, 0.0f, 0.0f);
 	}
-	//Add the force from the pressure gradient
-	pressure_forces(particles);
 	//Add the gravity forces
 	gravity_forces(particles);
+	update_h_vel(particles);
+
+	//Add the force from the pressure gradient
+	pressure_forces(particles);
 }
 
 /*
  * The forces on the particles contributed by the pressures
  */
 void SphUtils::pressure_forces(std::vector<Particle> &particles) {
-	int nx = (int)ceil( (maxx-minx)/cell_dimensions);
-	int ny = (int)ceil( (maxy-miny)/cell_dimensions);
-	int nz = (int)ceil( (maxz-minz)/cell_dimensions);
+	int nx = (int)ceil( (maxx-minx)/cell_dimensions)+1;
+	int ny = (int)ceil( (maxy-miny)/cell_dimensions)+1;
+	int nz = (int)ceil( (maxz-minz)/cell_dimensions)+1;
 
 	//loop through the cells
 	for (std::vector<std::vector<int>>::size_type i=0; i<cells.size(); i++) {
@@ -229,7 +243,7 @@ void SphUtils::pressure_forces(std::vector<Particle> &particles) {
 						int tz = z+c;
 						
 						//If this grid is out of bounds we skip it
-						if ( (tx<0) || (tx>nx-1) || (ty<0) || (ty>nx-1) || (tz <0) || (tz>nz-1) ) {}
+						if ( (tx<0) || (tx>nx-1) || (ty<0) || (ty>ny-1) || (tz<0) || (tz>nz-1) ) {}
 						else {
 							unsigned int j = tx + nx*ty+ (nx*ny + ny)*tz;
 
@@ -243,7 +257,7 @@ void SphUtils::pressure_forces(std::vector<Particle> &particles) {
 									//deltaP/rho = F ~ -m*(pi/rhoi^2 + pj/rhoj^2)deltaW 
 									float temp = -particles[p2_index].mass *( particles[p1_index].pressure/(particles[p1_index].density*particles[p1_index].density) + particles[p2_index].pressure/(particles[p2_index].density*particles[p2_index].density) );
 									if (particles[p1_index].pressure*temp*glm::length(grad_kernel(particles[p1_index].pos, particles[p2_index].pos)) > 1)
-										std::cout << particles[p1_index].pressure*temp*glm::length(grad_kernel(particles[p1_index].pos, particles[p2_index].pos)) << std::endl;
+										std::cout << /*particles[p1_index].pressure*/temp*glm::length(grad_kernel(particles[p1_index].pos, particles[p2_index].pos)) << std::endl;
 									particles[p1_index].force += particles[p1_index].pressure*temp * grad_kernel(particles[p1_index].pos, particles[p2_index].pos);
 									//std::cout << "AFTER ACCESSING PARTICLE ARRAY" << std::endl;
 								}
@@ -252,8 +266,8 @@ void SphUtils::pressure_forces(std::vector<Particle> &particles) {
 					}
 				}
 			}
-			if (glm::length(particles[p1_index].force) > 10)
-				std::cout << "Force from pressure on" << p1_index << ": " << particles[p1_index].force.x << ", " << particles[p1_index].force.y << ", " << particles[p1_index].force.z << std::endl;
+			//if (glm::length(particles[p1_index].force) > 10)
+			//	std::cout << "Force from pressure on" << p1_index << ": " << particles[p1_index].force.x << ", " << particles[p1_index].force.y << ", " << particles[p1_index].force.z << std::endl;
 		}
 	}
 }
@@ -266,13 +280,28 @@ void SphUtils::gravity_forces(std::vector<Particle> &particles) {
 	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
 		//add the forces. For now, we only have simple gravity: F = mg
 		particles[i].force += particles[i].mass*glm::vec3(0.0, -9.806f, 0.0);
+
+		//std::cout << "Total force on particle" << i << particles[i].force.x << ", " << particles[i].force.y << ", " <<particles[i].force.z << std::endl;
+	}
+}
+
+
+/*
+ * Updates the half timestep velocities for the leapfrog integration. Non-pressure forces are used.
+ */
+void SphUtils::update_h_vel(std::vector<Particle> &particles) {
+	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
+		//Update the velocities based on the forces
+		// a = F/m
+		//vi+1 = vi + dt*a
+		particles[i].vel = particles[i].vel + dt/2.0f * particles[i].force/particles[i].mass;
 	}
 }
 
 /*
  * Updates the positions of the particles
  */
-void SphUtils::update_posvel(std::vector<Particle> &particles, float dt) {
+void SphUtils::update_posvel(std::vector<Particle> &particles) {
 	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
 		//Update the velocities based on the forces
 		// a = F/m
@@ -314,6 +343,15 @@ void SphUtils::detect_collisions(std::vector<Particle> &particles, std::vector<W
 				//We have to check if we're out of bounds of the wall
 				//if ( (xl-smooth_length >= walls[j].xlength) || (xl+smooth_length <= walls[j].xlength) ||
 				//	 (xl-smooth_length >= walls[j].ylength) || (xl+smooth_length <= walls[j].ylength) ) {
+				//if ((j = 4) || (j==5)) {
+					//std::cout << i << "colldiing with back/front wall "<< j << std::endl;
+					//std::cout << (particles[i].pos-walls[j].center).x << ", " << (particles[i].pos-walls[j].center).y << ", " << (particles[i].pos-walls[j].center).z << std::endl;
+					///std::cout << "Particle position: " << (particles[i].pos).x << ", " << (particles[i].pos).y << ", " << (particles[i].pos).z << std::endl;
+					//std::cout << "Wall center: " << (walls[j].center).x << ", " << (walls[j].center).y << ", " << (walls[j].center).z << std::endl;
+					//std::cout << "Wall normal center: " << (walls[j].normal).x << ", " << (walls[j].normal).y << ", " << (walls[j].normal).z << std::endl;
+					//std::cout << dot << std::endl << std::endl;
+				//}
+
 					collisions.push_back(std::make_pair(i,j));
 				//}
 			}
