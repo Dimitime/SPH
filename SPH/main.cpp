@@ -26,7 +26,7 @@ GLuint vbo;
 GLuint MatrixID;
 
 //timestep value
-const float dt = 0.001f;
+const float dt = 0.01f;
 float total_time = 0.0f;
 
 //Smoothing length
@@ -133,10 +133,10 @@ void disp(void) {
 	//glBindBuffer(GL_ARRAY_BUFFER, 0);
 	//glFlush();
 	//std::cout <<"Writing to image" << std::endl;int timems = glutGet(GLUT_ELAPSED_TIME);
-	if ((int)(total_time*10000) % 100) {
-		std::cout << "Printing at time" << total_time << std::endl;
-		screenshot.capture();
-	}
+	//if ((int)(total_time*10000) % 100) {
+	//	std::cout << "Printing at time" << total_time << std::endl;
+	//	screenshot.capture();
+	//}
 	glutSwapBuffers();
 }
 

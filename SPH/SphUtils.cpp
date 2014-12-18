@@ -215,7 +215,7 @@ void SphUtils::update_density(std::vector<Particle> &particles) {
 			}
 			//}
 			particles[p1_index].density = density;
-			particles[p1_index].pressure = 1.0f*(pow(particles[p1_index].density/rho0, 7)-1); //if (pow(particles[p1_index].density/rho0, 7)-1 > 2) std::cout << pow(particles[p1_index].density/rho0, 7)-1 << std::endl;
+			particles[p1_index].pressure = 100.0f*(pow(particles[p1_index].density/rho0, 7)-1); //if (pow(particles[p1_index].density/rho0, 7)-1 > 2) std::cout << pow(particles[p1_index].density/rho0, 7)-1 << std::endl;
 			//the pressure us updated using the speed of sound in water: pi = c^2 (rhoi - rho0)
 			//particles[p1_index].pressure = 10 * (particles[p1_index].density - rho0); std::cout << 10 * (particles[p1_index].density - rho0) << std::endl;
 			//if (particles[p1_index].pressure > 100)
