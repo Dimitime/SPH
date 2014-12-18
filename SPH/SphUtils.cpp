@@ -1,6 +1,6 @@
 #define _USE_MATH_DEFINES
 
-#include "SphUtils.h"
+#include "SphUtils.hpp"
 #include <glm/gtc/constants.hpp> 
 
 
@@ -89,21 +89,21 @@ void SphUtils::update_cells(std::vector<Particle> &particles) {
  */
 float SphUtils::kernel_function(glm::vec3 i, glm::vec3 j) {
 	//Distance in terms of smooth lenghts
-	float q = glm::distance(i, j)/smooth_length;
+	float q = glm::distance(i, j);///smooth_length;
 
 	//std::cout << "Q: " << q << std::endl;
 
 	float result = 0.0f;
-	if (q >= 2)      result = 0;
-	else if (q > 1)  result = 1.0f/6.0f*(2-q)*(2-q)*(2-q);
-	else if (q <= 1) result = 2.0f/3.0f - q*q + q*q*q/2;
+//	if (q >= 2)      result = 0;
+//	else if (q > 1)  result = 1.0f/6.0f*(2-q)*(2-q)*(2-q);
+//	else if (q <= 1) result = 2.0f/3.0f - q*q + q*q*q/2;
 
 	//if (result != 0) std::cout << "Result nonzero: " << "q=" << q << " Wij= " << result*2.0f/(3.0f*(float)M_PI*smooth_length*smooth_length*smooth_length) << std::endl;
-	//if (q < smooth_length)
-	//	result = 315/(64*(float)M_PI*pow(smooth_length,9)) * pow(smooth_length*smooth_length-q*q,3);
+	if (q < smooth_length)
+		result = 315/(64*(float)M_PI*pow(smooth_length,9)) * pow(smooth_length*smooth_length-q*q,3);
 
 	//std::cout << "r1: " << result << std::endl;
-	result *= 2.0f/(3.0f*(float)M_PI*smooth_length*smooth_length*smooth_length);
+	//result *= 2.0f/(3.0f*(float)M_PI*smooth_length*smooth_length*smooth_length);
 	//std::cout << "r2: " << result << std::endl;
 	return result;
 }
@@ -113,18 +113,18 @@ float SphUtils::kernel_function(glm::vec3 i, glm::vec3 j) {
  */
 glm::vec3 SphUtils::grad_kernel(glm::vec3 i, glm::vec3 j) {
 	//Returns the distance in terms of smooth lenghts
-	float q = glm::distance(i, j)/smooth_length;
+	float q = glm::distance(i, j);///smooth_length;
 	float result = 0.0f;
 
-	if (q >= 2)      result = 0;
-	else if (q > 1)  result = -3.0f/6.0f*(2-q)*(2-q);
-	else if (q <= 1) result = -2.0f*q + 3.0f*q*q/2.0f;
+//	if (q >= 2)      result = 0;
+//	else if (q > 1)  result = -3.0f/6.0f*(2-q)*(2-q);
+//	else if (q <= 1) result = -2.0f*q + 3.0f*q*q/2.0f;
 
-	//if (q < smooth_length)
-	//	result = -15.0f/((float)M_PI*pow(smooth_length,7))*(smooth_length-q)*(smooth_length-q);
+	if (q < smooth_length)
+		result = -45.0f/((float)M_PI*pow(smooth_length,6))*(smooth_length-q)*(smooth_length-q);
 
 	//std::cout << result << std::endl;
-	result *= 2.0f/(3.0f*(float)M_PI*smooth_length*smooth_length*smooth_length*smooth_length);
+	//result *= 2.0f/(3.0f*(float)M_PI*smooth_length*smooth_length*smooth_length*smooth_length);
 
 	//Multiply the direction rij = ri - rj by the results
 	glm::vec3 grad = glm::normalize(i-j);
@@ -138,26 +138,26 @@ glm::vec3 SphUtils::grad_kernel(glm::vec3 i, glm::vec3 j) {
  */
 float SphUtils::lap_kernel(glm::vec3 i, glm::vec3 j) {
 	//Distance in terms of smooth lenghts
-	float q = glm::distance(i, j)/smooth_length;
+	float q = glm::distance(i, j);///smooth_length;
 	glm::vec3 r = glm::normalize(i-j);
 
 	//std::cout << "Q: " << q << std::endl;
 
 	float result = 0.0f;
-	if (q >= 2)      result = 0;
+/*	if (q >= 2)      result = 0;
 	else if (q > 1)  result = -3.0f/6.0f*(2.0f-q)*(2.0f-q)-(2.0f-q)*r.x +
 							  -3.0f/6.0f*(2.0f-q)*(2.0f-q)-(2.0f-q)*r.y + 
 							  -3.0f/6.0f*(2.0f-q)*(2.0f-q)-(2.0f-q)*r.z;
 	else if (q <= 1) result = -2.0f*q + 3.0f*q*q/2.0f+(-2.0f+3.0f*q)*r.x +
 							  -2.0f*q + 3.0f*q*q/2.0f+(-2.0f+3.0f*q)*r.y +
 							  -2.0f*q + 3.0f*q*q/2.0f+(-2.0f+3.0f*q)*r.z;
-
+*/
 	//if (result != 0) std::cout << "Result nonzero: " << "q=" << q << " Wij= " << result*2.0f/(3.0f*(float)M_PI*smooth_length*smooth_length*smooth_length) << std::endl;
-	//if (q < smooth_length)
-	//	result = 315/(64*(float)M_PI*pow(smooth_length,9)) * pow(smooth_length*smooth_length-q*q,3);
-
+	if (q < smooth_length)
+		result = 45/((float)M_PI*pow(smooth_length,6)) * (smooth_length-q);
+	
 	//std::cout << "r1: " << result << std::endl;
-	result *= 2.0f/(3.0f*(float)M_PI*smooth_length*smooth_length*smooth_length);
+	//result *= 2.0f/(3.0f*(float)M_PI*smooth_length*smooth_length*smooth_length*smooth_length);
 	//std::cout << "r2: " << result << std::endl;
 	return result;
 
@@ -172,19 +172,21 @@ void SphUtils::update_density(std::vector<Particle> &particles) {
 	int nz = (int)ceil( (maxz-minz)/cell_dimensions)+1;
 
 	//loop through the cells
-	for (std::vector<std::vector<int>>::size_type i=0; i<cells.size(); i++) {
+//	for (std::vector<std::vector<int>>::size_type i=0; i<cells.size(); i++) {
 		//loop through each particle in the cell
-		for (std::vector<int>::size_type m=0; m<cells[i].size(); m++) {
+//		for (std::vector<int>::size_type m=0; m<cells[i].size(); m++) {
 			
-
+			
 	//std::cout << "Min/Max: { (" << minx << ", " << maxx << ") " << " (" << miny << ", " << maxy << ")  " << " (" << minz << ", " << maxz << ")  " << std::endl;
 	//std::cout << "Dimensions" << cell_dimensions << std::endl;
+			for (size_t i=0; i<particles.size(); i++) {
+
 			float density = 0.0f;
 
-			int p1_index = cells[i][m];
-
+			int p1_index = i;//cells[i][m];
+			for (size_t j=0; j<particles.size(); j++) {
 			//We need to also check adjacent cells
-			for (int a=-1; a<1; a++) {
+/*			for (int a=-1; a<1; a++) {
 				for (int b=-1; b<1; b++) {
 					for (int c=-1; c<1; c++) {
 						int x = (int)floor((particles[p1_index].pos.x-minx)/cell_dimensions);
@@ -204,23 +206,25 @@ void SphUtils::update_density(std::vector<Particle> &particles) {
 							//	std::cout << "Pos: " << particles[p1_index].pos.x << ", " << particles[p1_index].pos.y << ", " << particles[p1_index].pos.z << std::endl;
 							//}
 							for (std::vector<int>::size_type n=0; n<cells[j].size(); n++) {
-								int p2_index = cells[j][n];
-								density += particles[p2_index].mass*kernel_function(particles[p1_index].pos, particles[p2_index].pos);
-								//std::cout << "Next!" << std::endl;
-							}
-						}
+*/								int p2_index = j;//cells[j][n];
+								if (p1_index != p2_index) {			
+									density += particles[p2_index].mass* glm::dot( (particles[p1_index].vel-particles[p2_index].vel), grad_kernel(particles[p1_index].pos, particles[p2_index].pos) );
+													//std::cout << "Next!" << std::endl;
+								}
+//							}
+//						}
 
 					}
-				}
-			}
+//				}
+//			}
 			//}
-			particles[p1_index].density = density;
-			particles[p1_index].pressure = 100.0f*(pow(particles[p1_index].density/rho0, 7)-1); //if (pow(particles[p1_index].density/rho0, 7)-1 > 2) std::cout << pow(particles[p1_index].density/rho0, 7)-1 << std::endl;
+			particles[p1_index].density += dt*density;
+			particles[p1_index].pressure = 1.0f*(pow(particles[p1_index].density/rho0, 7)-1); //if (pow(particles[p1_index].density/rho0, 7)-1 > 2) std::cout << pow(particles[p1_index].density/rho0, 7)-1 << std::endl;
 			//the pressure us updated using the speed of sound in water: pi = c^2 (rhoi - rho0)
 			//particles[p1_index].pressure = 10 * (particles[p1_index].density - rho0); std::cout << 10 * (particles[p1_index].density - rho0) << std::endl;
 			//if (particles[p1_index].pressure > 100)
-			//	std::cout << "Density for " << p1_index << ": " << particles[p1_index].density << "Pressure: " << particles[p1_index].pressure << std::endl;
-		}
+			//	std::cout << "Density for " << p1_index << ": " << particles[p1_index].density << " Pressure: " << particles[p1_index].pressure << std::endl;
+//		}
 	}
 }
 
@@ -256,15 +260,16 @@ void SphUtils::pressure_forces(std::vector<Particle> &particles) {
 	int nz = (int)ceil( (maxz-minz)/cell_dimensions)+1;
 
 	//loop through the cells
-	for (std::vector<std::vector<int>>::size_type i=0; i<cells.size(); i++) {
-		//loop through each particle in the cell
-		for (std::vector<int>::size_type m=0; m<cells[i].size(); m++) {
+//	for (std::vector<std::vector<int>>::size_type i=0; i<cells.size(); i++) {
+//		//loop through each particle in the cell
+//		for (std::vector<int>::size_type m=0; m<cells[i].size(); m++) {
 			//and loop through the cells again...
-
-			int p1_index = cells[i][m];
-
+			
+			for (size_t i=0; i<particles.size(); i++) {
+			int p1_index = i;//cells[i][m];
+			for (size_t j=0; j<particles.size(); j++) {
 			//We need to also check adjacent cells
-			for (int a=-1; a<1; a++) {
+/*			for (int a=-1; a<1; a++) {
 				for (int b=-1; b<1; b++) {
 					for (int c=-1; c<1; c++) {
 						int x = (int)floor((particles[p1_index].pos.x-minx)/cell_dimensions);
@@ -282,32 +287,41 @@ void SphUtils::pressure_forces(std::vector<Particle> &particles) {
 
 							//loop through each particle in the cell
 							for (std::vector<int>::size_type n=0; n<cells[j].size(); n++) {
-								int p2_index = cells[j][n];
+*/								int p2_index = j;//cells[j][n];
 
 								//std::cout << "Pairs" << i << ", " << j << " p1: " << p1_index << " p2: " << p2_index << std::endl;
 								if ( p1_index != p2_index) {
 									//std::cout << "BEFORE ACCESSING PARTICLE ARRAY" << std::endl;
 									//deltaP/rho = F ~ -m*(pi/rhoi^2 + pj/rhoj^2)deltaW 
 									//float temp = -particles[p2_index].mass *( particles[p1_index].pressure/(particles[p1_index].density*particles[p1_index].density) + particles[p2_index].pressure/(particles[p2_index].density*particles[p2_index].density) );
-									float temp = -particles[p2_index].mass *( particles[p1_index].pressure+ particles[p2_index].pressure)/(2.0f*particles[p2_index].density);
+
 									//if (particles[p1_index].pressure*temp*glm::length(grad_kernel(particles[p1_index].pos, particles[p2_index].pos)) > 1)
 									//	std::cout << /*particles[p1_index].pressure*/temp*glm::length(grad_kernel(particles[p1_index].pos, particles[p2_index].pos)) << std::endl;
-
+									
 									//We're going to add an artificial viscosity here
+									float pi= 0.0f;// = // * grad_kernel(particles[p1_index].pos, particles[p2_index].pos)
+									float vdotr = glm::dot( (particles[p1_index].vel-particles[p2_index].vel), (particles[p1_index].pos-particles[p2_index].pos));
 
-									glm::vec3 av;// = // * grad_kernel(particles[p1_index].pos, particles[p2_index].pos)
+									if (vdotr < 0) {
+										float c = (sqrt(1.0f*abs(particles[p1_index].pressure/particles[p1_index].density))+sqrt(1.0f*abs(particles[p2_index].pressure/particles[p2_index].density)) )/2.0f;
+										float r = glm::length(particles[p1_index].pos-particles[p2_index].pos);
+										float mu = smooth_length* vdotr /( (r*r ) + 20);
+										pi = 2.0f*(-c*mu+2*mu*mu)/ (particles[p1_index].density + particles[p2_index].density);
+										//if (pi > 0.1)
+										//std::cout << "Adding artifical viscosity of magintude " << pi << std::endl;
+									}
+									float temp = -particles[p2_index].mass*( pi + ( particles[p1_index].pressure+ particles[p2_index].pressure)/(2.0f*particles[p2_index].density*particles[p1_index].density));
 
-
-									particles[p1_index].accel += 1/particles[p1_index].density*temp * grad_kernel(particles[p1_index].pos, particles[p2_index].pos);
+									particles[p1_index].accel += temp * grad_kernel(particles[p1_index].pos, particles[p2_index].pos);
 									//std::cout << "AFTER ACCESSING PARTICLE ARRAY" << std::endl;
 								}
-							}
-						}
-					}
-				}
-			}
-			//if (glm::length(particles[p1_index].force) > 10)
-			//	std::cout << "Force from pressure on" << p1_index << ": " << particles[p1_index].force.x << ", " << particles[p1_index].force.y << ", " << particles[p1_index].force.z << std::endl;
+//							}
+//						}
+//					}
+//				}
+//			}
+			//if (glm::length(particles[p1_index].accel) > 10)
+			//	std::cout << "accel from pressure on " << p1_index << ": " << particles[p1_index].accel.x << ", " << particles[p1_index].accel.y << ", " << particles[p1_index].accel.z << std::endl;
 		}
 	}
 }
@@ -321,15 +335,16 @@ void SphUtils::viscosity_forces(std::vector<Particle> &particles) {
 	int nz = (int)ceil( (maxz-minz)/cell_dimensions)+1;
 
 	//loop through the cells
-	for (std::vector<std::vector<int>>::size_type i=0; i<cells.size(); i++) {
+//	for (std::vector<std::vector<int>>::size_type i=0; i<cells.size(); i++) {
 		//loop through each particle in the cell
-		for (std::vector<int>::size_type m=0; m<cells[i].size(); m++) {
+//		for (std::vector<int>::size_type m=0; m<cells[i].size(); m++) {
 			//and loop through the cells again...
-
-			int p1_index = cells[i][m];
+	for (size_t i=0; i<particles.size(); i++) {
+			int p1_index = i;//cells[i][m];
+	for (size_t j=0; j<particles.size(); j++) {
 
 			//We need to also check adjacent cells
-			for (int a=-1; a<1; a++) {
+/*			for (int a=-1; a<1; a++) {
 				for (int b=-1; b<1; b++) {
 					for (int c=-1; c<1; c++) {
 						int x = (int)floor((particles[p1_index].pos.x-minx)/cell_dimensions);
@@ -347,23 +362,24 @@ void SphUtils::viscosity_forces(std::vector<Particle> &particles) {
 
 							//loop through each particle in the cell
 							for (std::vector<int>::size_type n=0; n<cells[j].size(); n++) {
-								int p2_index = cells[j][n];
+*/								int p2_index = j;//cells[j][n];
 
 								//std::cout << "Pairs" << i << ", " << j << " p1: " << p1_index << " p2: " << p2_index << std::endl;
 								if ( p1_index != p2_index) {
 									//std::cout << "BEFORE ACCESSING PARTICLE ARRAY" << std::endl;
 									//deltaP/rho = F ~ -m*(pi/rhoi^2 + pj/rhoj^2)deltaW 
-									float temp = -.001f*particles[p2_index].mass/(particles[p2_index].density*particles[p2_index].density) *lap_kernel(particles[p1_index].pos, particles[p2_index].pos);
+									float temp = -0.1f*particles[p2_index].mass/(particles[p1_index].density*particles[p2_index].density) *lap_kernel(particles[p1_index].pos, particles[p2_index].pos);
+									//std::cout << temp << "viscosity: " << std::endl;
 									//if (temp*glm::length(particles[p1_index].vel-particles[p2_index].vel) > 1)
 									//std::cout << "Force from visc: " << temp*glm::length(particles[p1_index].vel-particles[p2_index].vel) << std::endl;
 									particles[p1_index].accel += temp*(particles[p1_index].vel-particles[p2_index].vel);
 									//std::cout << "AFTER ACCESSING PARTICLE ARRAY" << std::endl;
 								}
-							}
-						}
-					}
-				}
-			}
+//							}
+//						}
+//					}
+//				}
+//			}
 			//if (glm::length(particles[p1_index].force) > 10)
 			//	std::cout << "Force from pressure on" << p1_index << ": " << particles[p1_index].force.x << ", " << particles[p1_index].force.y << ", " << particles[p1_index].force.z << std::endl;
 		}
@@ -378,7 +394,7 @@ void SphUtils::gravity_forces(std::vector<Particle> &particles) {
 	//std::cout << sph.kernel_function(particles[0].pos, particles[1].pos) << std::endl;
 	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
 		//add the forces. For now, we only have simple gravity: F = mg
-		particles[i].accel += /*particles[i].mass*/glm::vec3(0.0, -9.806f, 0.0);
+		particles[i].accel += /*particles[i].mass*/glm::vec3(0.0, -1, 0.0);
 
 		//std::cout << "Total force on particle" << i << particles[i].force.x << ", " << particles[i].force.y << ", " <<particles[i].force.z << std::endl;
 	}
@@ -393,7 +409,7 @@ void SphUtils::update_h_vel(std::vector<Particle> &particles) {
 		//Update the velocities based on the forces
 		// a = F/m
 		//vi+1 = vi + dt*a
-		particles[i].vel = particles[i].vel + dt/2.0f * particles[i].accel;///particles[i].mass;
+		particles[i].vel = particles[i].vel + dt * particles[i].accel;///particles[i].mass;
 	}
 }
 
@@ -405,11 +421,28 @@ void SphUtils::update_posvel(std::vector<Particle> &particles) {
 		//Update the velocities based on the forces
 		// a = F/m
 		//vi+1 = vi + dt*a
-		particles[i].vel = particles[i].vel + dt/2 * particles[i].accel;///particles[i].mass;
+		particles[i].vel = particles[i].vel + dt * particles[i].accel;///particles[i].mass;
 		//Use the updated velocities to calculate the new positions
 		//xi+1 = xi + dt*xi+1
-		particles[i].pos = particles[i].pos + dt * particles[i].vel;
+
+		//We want to adapt this for incompressable flow
+
+		glm::vec3 vi = velocity_incompressible(i, particles);
+
+		particles[i].pos = particles[i].pos + dt * (particles[i].vel);//+vi);
 	}
+}
+
+glm::vec3  SphUtils::velocity_incompressible(std::vector<Particle>::size_type i, std::vector<Particle> &particles) {
+		glm::vec3 v = particles[i].vel;
+		glm::vec3 vr(0.0f,0.0f,0.0f);
+		float e = 0.5;
+	
+		for (size_t j=0; j<particles.size(); j++) {
+			vr += 2*e*particles[j].mass * (particles[i].vel-particles[j].vel) * grad_kernel(particles[i].pos,particles[j].pos) /(particles[i].density+particles[j].density);
+			//std::cout << vr.length() << std::endl;
+		}
+		return vr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -420,7 +453,7 @@ void SphUtils::update_posvel(std::vector<Particle> &particles) {
  */
 void SphUtils::collision(std::vector<Particle> &particles, std::vector<Wall> &walls) {
 	detect_collisions(particles,walls);
-	handle_collisions(particles, walls);
+	//handle_collisions(particles, walls);
 }
 
 /*
@@ -450,8 +483,26 @@ void SphUtils::detect_collisions(std::vector<Particle> &particles, std::vector<W
 					//std::cout << "Wall normal center: " << (walls[j].normal).x << ", " << (walls[j].normal).y << ", " << (walls[j].normal).z << std::endl;
 					//std::cout << dot << std::endl << std::endl;
 				//}
+				
+					//Reflect the veloicty across the normal.
+					glm::vec3 impulse = glm::normalize(walls[j].normal);
+					impulse *= (1+0.0)*glm::dot(walls[j].normal, particles[i].vel);
 
-					collisions.push_back(std::make_pair(i,j));
+					//Repulsive force
+					float fc = glm::dot(-walls[j].normal, particles[i].accel);
+					//std::cout << fc << std::endl;
+					//std::cout << "Before " <<  particles[collisions[i].first].accel.x << ", " <<particles[collisions[i].first].accel.y << ", " <<particles[collisions[i].first].accel.z <<std::endl;
+
+					if (fc < 0)
+						fc = 0.0;
+		
+					glm::vec3 ac = fc*glm::normalize(walls[j].normal);
+					//impulse *= 0.99;
+					particles[i].vel += -impulse;
+					particles[i].accel += ac;
+					
+					//std::cout << "After " <<  particles[i].vel.x << ", " <<particles[i].vel.y << ", " <<particles[i].vel.z <<std::endl;
+					//collisions.push_back(std::make_pair(i,j));
 				//}
 			}
 		}
@@ -463,11 +514,6 @@ void SphUtils::detect_collisions(std::vector<Particle> &particles, std::vector<W
  */
 void SphUtils::handle_collisions(std::vector<Particle> &particles, std::vector<Wall> &walls) {
 	for (std::vector<std::pair<int,int>>::size_type i=0; i<collisions.size(); i++) {
-		//Reflect the veloicty across the normal.
-		glm::vec3 impulse = glm::normalize(walls[collisions[i].second].normal);
-		impulse *= (1+0.9)*glm::dot(walls[collisions[i].second].normal, particles[collisions[i].first].vel);
-		
-		//impulse *= 0.99;
-		particles[collisions[i].first].vel = particles[collisions[i].first].vel-impulse;;
+		//Apply a force to keep the particle from penetrating the wall
 	}
 }

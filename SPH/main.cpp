@@ -9,7 +9,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform2.hpp>
 #include "GLScreenCapturer.h"
-#include "SphUtils.h"
+#include "SphUtils.hpp"
 
 #define WINDOW_WIDTH 500
 #define WINDOW_HEIGHT 500
@@ -26,11 +26,12 @@ GLuint vbo;
 GLuint MatrixID;
 
 //timestep value
-const float dt = 0.01f;
+const float dt = 0.001f;
 float total_time = 0.0f;
 
 //Smoothing length
-const float smooth_length = 1300.0f/NUMBER_PARTICLES;
+const float smooth_length = 1000.0f/NUMBER_PARTICLES;
+
 //The ideal density. This is the density of water
 const float rho0 = 1000.0f;
 //The speed of sound in water
@@ -46,8 +47,8 @@ glm::mat4 Projection = glm::perspective(45.0f, 4.0f / 3.0f, 0.1f, 100.0f);
 
 // Camera matrix
 glm::mat4 View = glm::lookAt(
-    glm::vec3(3, 3, 15), // Camera is at (4,3,3), in World Space
-    glm::vec3(0.0,0.0, 0.0), // and looks at the origin
+    glm::vec3(3.0, 3.0, 15.0), // Camera is at (4,3,3), in World Space
+    glm::vec3(0.0, 0.0, 0.0), // and looks at the origin
     glm::vec3(0,1,0)  // Head is up (set to 0,-1,0 to look upside-down)
 );
 
@@ -287,9 +288,9 @@ void initParticles() {
 	//Density of water kg/m^3
 	float density = rho0+epsilon;
 	//Start with 1 m^3 of water
-	float volume = 1.0f;
+	float volume = 500.0f;
 	//Mass in KG of each particle
-	float mass = smooth_length*smooth_length*smooth_length*rho0;//density * volume / NUMBER_PARTICLES;
+	float mass =smooth_length*smooth_length*smooth_length*rho0;////density * volume / NUMBER_PARTICLES;// //
 	std::cout << "Mass: " << mass << std::endl;
 	//Pressure of the fluid
 	float pressure = 1.0f;
@@ -298,14 +299,14 @@ void initParticles() {
 	//Thermal energy? I might get rid of this
 	float thermal = 1.0f;
 
-	float x = -4.5f;
+	float x = -2.5f;
 	float zvel = 0.0f;
     for (int i=0; i<10; i++) {
-		float y = -4.5f;
+		float y = -4.9f;
 		x += smooth_length/2.0f;
         for (int j=0; j<10; j++) {
 			y += smooth_length/2.0f;
-			float z = -4.5f;
+			float z = -2.5f;
 			for (int k=0; k<10; k++) {
 				z += smooth_length/2.0f;
 				Particle part(glm::vec3(x,y,z), glm::vec3(0.0f,0.0f,zvel*j), glm::vec3(0.0f,0.0f,0.0f), mass, density, pressure, thermal);

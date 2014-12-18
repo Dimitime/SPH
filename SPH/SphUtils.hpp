@@ -62,6 +62,7 @@ private:
 	void gravity_forces(std::vector<Particle> &particles);
 	void pressure_forces(std::vector<Particle> &particles);
 	void viscosity_forces(std::vector<Particle> &particles);
+	glm::vec3 velocity_incompressible(std::vector<Particle>::size_type i, std::vector<Particle> &particles);
 	void detect_collisions(std::vector<Particle> &particles, std::vector<Wall> &walls);
 	void handle_collisions(std::vector<Particle> &particles, std::vector<Wall> &walls);
 };
