@@ -89,6 +89,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GLScreenCapturer.h" />
+    <ClInclude Include="Sphere.hpp" />
     <ClInclude Include="macros.h" />
     <ClInclude Include="Wall.hpp" />
     <ClInclude Include="Particle.hpp" />

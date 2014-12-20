@@ -1,5 +1,3 @@
-#define _USE_MATH_DEFINES
-
 #include "SphUtils.hpp"
 #include <glm/gtc/constants.hpp> 
 
@@ -89,21 +87,19 @@ void SphUtils::update_cells(std::vector<Particle> &particles) {
  */
 float SphUtils::kernel_function(glm::vec3 i, glm::vec3 j) {
 	//Distance in terms of smooth lenghts
-	float q = glm::distance(i, j);///smooth_length;
-
-	//std::cout << "Q: " << q << std::endl;
-
+	float q = glm::distance(i, j)/smooth_length;
 	float result = 0.0f;
+
 //	if (q >= 2)      result = 0;
 //	else if (q > 1)  result = 1.0f/6.0f*(2-q)*(2-q)*(2-q);
 //	else if (q <= 1) result = 2.0f/3.0f - q*q + q*q*q/2;
+//	result *= 3.0f/(2.0f*(float)M_PI*smooth_length*smooth_length*smooth_length);
 
 	//if (result != 0) std::cout << "Result nonzero: " << "q=" << q << " Wij= " << result*2.0f/(3.0f*(float)M_PI*smooth_length*smooth_length*smooth_length) << std::endl;
-	if (q < smooth_length)
-		result = 315/(64*(float)M_PI*pow(smooth_length,9)) * pow(smooth_length*smooth_length-q*q,3);
+	if (q <= smooth_length)
+		result = 315* pow(smooth_length*smooth_length-q*q,3)/(64*(float)glm::pi<float>()*pow(smooth_length,9)) ;
 
 	//std::cout << "r1: " << result << std::endl;
-	//result *= 2.0f/(3.0f*(float)M_PI*smooth_length*smooth_length*smooth_length);
 	//std::cout << "r2: " << result << std::endl;
 	return result;
 }
@@ -113,18 +109,18 @@ float SphUtils::kernel_function(glm::vec3 i, glm::vec3 j) {
  */
 glm::vec3 SphUtils::grad_kernel(glm::vec3 i, glm::vec3 j) {
 	//Returns the distance in terms of smooth lenghts
-	float q = glm::distance(i, j);///smooth_length;
+	float q = glm::distance(i, j)/smooth_length;
 	float result = 0.0f;
 
 //	if (q >= 2)      result = 0;
-//	else if (q > 1)  result = -3.0f/6.0f*(2-q)*(2-q);
+///	else if (q > 1)  result = -3.0f/6.0f*(2-q)*(2-q);
 //	else if (q <= 1) result = -2.0f*q + 3.0f*q*q/2.0f;
+//	result *= 3.0f/(2.0f*(float)M_PI*smooth_length*smooth_length*smooth_length*smooth_length);
 
 	if (q < smooth_length)
-		result = -45.0f/((float)M_PI*pow(smooth_length,6))*(smooth_length-q)*(smooth_length-q);
+		result = -45.0f*(smooth_length-q)*(smooth_length-q)/((float)glm::pi<float>()*pow(smooth_length,6));
 
 	//std::cout << result << std::endl;
-	//result *= 2.0f/(3.0f*(float)M_PI*smooth_length*smooth_length*smooth_length*smooth_length);
 
 	//Multiply the direction rij = ri - rj by the results
 	glm::vec3 grad = glm::normalize(i-j);
@@ -138,7 +134,7 @@ glm::vec3 SphUtils::grad_kernel(glm::vec3 i, glm::vec3 j) {
  */
 float SphUtils::lap_kernel(glm::vec3 i, glm::vec3 j) {
 	//Distance in terms of smooth lenghts
-	float q = glm::distance(i, j);///smooth_length;
+	float q = glm::distance(i, j)/smooth_length;
 	glm::vec3 r = glm::normalize(i-j);
 
 	//std::cout << "Q: " << q << std::endl;
@@ -154,7 +150,7 @@ float SphUtils::lap_kernel(glm::vec3 i, glm::vec3 j) {
 */
 	//if (result != 0) std::cout << "Result nonzero: " << "q=" << q << " Wij= " << result*2.0f/(3.0f*(float)M_PI*smooth_length*smooth_length*smooth_length) << std::endl;
 	if (q < smooth_length)
-		result = 45/((float)M_PI*pow(smooth_length,6)) * (smooth_length-q);
+		result = 45/((float)glm::pi<float>()*pow(smooth_length,6)) * (smooth_length-q);
 	
 	//std::cout << "r1: " << result << std::endl;
 	//result *= 2.0f/(3.0f*(float)M_PI*smooth_length*smooth_length*smooth_length*smooth_length);
@@ -219,9 +215,11 @@ void SphUtils::update_density(std::vector<Particle> &particles) {
 //			}
 			//}
 			particles[p1_index].density += dt*density;
-			particles[p1_index].pressure = 1.0f*(pow(particles[p1_index].density/rho0, 7)-1); //if (pow(particles[p1_index].density/rho0, 7)-1 > 2) std::cout << pow(particles[p1_index].density/rho0, 7)-1 << std::endl;
+			//particles[p1_index].pressure = 0.08f*(pow(particles[p1_index].density/rho0, 7)-1); //if (pow(particles[p1_index].density/rho0, 7)-1 > 2) std::cout << pow(particles[p1_index].density/rho0, 7)-1 << std::endl;
+			//if (particles[p1_index].pressure < 0.0f)
+			//	particles[p1_index].pressure = 0.0f;
 			//the pressure us updated using the speed of sound in water: pi = c^2 (rhoi - rho0)
-			//particles[p1_index].pressure = 10 * (particles[p1_index].density - rho0); std::cout << 10 * (particles[p1_index].density - rho0) << std::endl;
+			particles[p1_index].pressure = 100.0f * (particles[p1_index].density - rho0);// std::cout << 10 * (particles[p1_index].density - rho0) << std::endl;
 			//if (particles[p1_index].pressure > 100)
 			//	std::cout << "Density for " << p1_index << ": " << particles[p1_index].density << " Pressure: " << particles[p1_index].pressure << std::endl;
 //		}
@@ -234,15 +232,19 @@ void SphUtils::update_density(std::vector<Particle> &particles) {
 /*
  * Updates the forces acting on all the particles.
  */
-void SphUtils::update_forces(std::vector<Particle> &particles) {
+void SphUtils::update_forces(std::vector<Particle> &particles,std::vector<Sphere> &spheres) {
 	//Zero the forces
 	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
 		//add the forces. For now, we only have simple gravity: F = mg
 			particles[i].accel = glm::vec3(0.0f, 0.0f, 0.0f);
 	}
+	for (std::vector<Sphere>::size_type i=0; i<spheres.size(); i++) {
+		//add the forces. For now, we only have simple gravity: F = mg
+		spheres[i].accel = glm::vec3(0.0f, 0.0f, 0.0f);
+	}
 	//Add the gravity forces
-	gravity_forces(particles);
-	update_h_vel(particles);
+	gravity_forces(particles,spheres);
+	//update_h_vel(particles);
 
 	//Add the force from the pressure gradient
 	pressure_forces(particles);
@@ -305,8 +307,8 @@ void SphUtils::pressure_forces(std::vector<Particle> &particles) {
 									if (vdotr < 0) {
 										float c = (sqrt(1.0f*abs(particles[p1_index].pressure/particles[p1_index].density))+sqrt(1.0f*abs(particles[p2_index].pressure/particles[p2_index].density)) )/2.0f;
 										float r = glm::length(particles[p1_index].pos-particles[p2_index].pos);
-										float mu = smooth_length* vdotr /( (r*r ) + 20);
-										pi = 2.0f*(-c*mu+2*mu*mu)/ (particles[p1_index].density + particles[p2_index].density);
+										float mu = smooth_length* vdotr /( (r*r) + 0.01f*smooth_length*smooth_length);
+										pi = 2.0f*(-0.1f*c*mu+0.2f*mu*mu)/ (particles[p1_index].density + particles[p2_index].density);
 										//if (pi > 0.1)
 										//std::cout << "Adding artifical viscosity of magintude " << pi << std::endl;
 									}
@@ -390,11 +392,17 @@ void SphUtils::viscosity_forces(std::vector<Particle> &particles) {
 /*
  * Apply the gravitational force
  */
-void SphUtils::gravity_forces(std::vector<Particle> &particles) {
+void SphUtils::gravity_forces(std::vector<Particle> &particles,std::vector<Sphere> &spheres) {
 	//std::cout << sph.kernel_function(particles[0].pos, particles[1].pos) << std::endl;
 	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
 		//add the forces. For now, we only have simple gravity: F = mg
 		particles[i].accel += /*particles[i].mass*/glm::vec3(0.0, -1, 0.0);
+
+		//std::cout << "Total force on particle" << i << particles[i].force.x << ", " << particles[i].force.y << ", " <<particles[i].force.z << std::endl;
+	}
+	for (std::vector<Sphere>::size_type i=0; i<spheres.size(); i++) {
+		//add the forces. For now, we only have simple gravity: F = mg
+		spheres[i].accel += /*particles[i].mass*/glm::vec3(0.0, -1, 0.0);
 
 		//std::cout << "Total force on particle" << i << particles[i].force.x << ", " << particles[i].force.y << ", " <<particles[i].force.z << std::endl;
 	}
@@ -409,19 +417,25 @@ void SphUtils::update_h_vel(std::vector<Particle> &particles) {
 		//Update the velocities based on the forces
 		// a = F/m
 		//vi+1 = vi + dt*a
-		particles[i].vel = particles[i].vel + dt * particles[i].accel;///particles[i].mass;
+		//particles[i].vel = particles[i].vel + dt/2 * particles[i].accel;///particles[i].mass;
 	}
 }
 
 /*
  * Updates the positions and velocities of the particles
  */
-void SphUtils::update_posvel(std::vector<Particle> &particles) {
+void SphUtils::update_posvel(std::vector<Particle> &particles,std::vector<Sphere> &spheres) {
 	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
 		//Update the velocities based on the forces
 		// a = F/m
 		//vi+1 = vi + dt*a
-		particles[i].vel = particles[i].vel + dt * particles[i].accel;///particles[i].mass;
+		//Hack to keep it from exploding
+		//if ( glm::dot(particles[i].vel,particles[i].vel) > 4) {
+		//	particles[i].vel *= 4.0 / glm::dot(particles[i].vel,particles[i].vel);}
+		//else {
+
+		particles[i].vel = particles[i].vel +  dt * particles[i].accel;///particles[i].mass;
+		//}
 		//Use the updated velocities to calculate the new positions
 		//xi+1 = xi + dt*xi+1
 
@@ -429,7 +443,25 @@ void SphUtils::update_posvel(std::vector<Particle> &particles) {
 
 		glm::vec3 vi = velocity_incompressible(i, particles);
 
-		particles[i].pos = particles[i].pos + dt * (particles[i].vel);//+vi);
+		particles[i].pos = particles[i].pos +dt * (particles[i].vel);//+vi);
+	}
+	for (std::vector<Sphere>::size_type i=0; i<spheres.size(); i++) {
+		//Update the velocities based on the forces
+		// a = F/m
+		//vi+1 = vi + dt*a
+		//Hack to keep it from exploding
+		//if ( glm::dot(particles[i].vel,particles[i].vel) > 4) {
+		//	particles[i].vel *= 4.0 / glm::dot(particles[i].vel,particles[i].vel);}
+		//else {
+
+		spheres[i].vel = spheres[i].vel +  dt * spheres[i].accel;///particles[i].mass;
+		//}
+		//Use the updated velocities to calculate the new positions
+		//xi+1 = xi + dt*xi+1
+
+		//We want to adapt this for incompressable flow
+
+		spheres[i].pos = spheres[i].pos +dt * (spheres[i].vel);//+vi);
 	}
 }
 
@@ -439,7 +471,8 @@ glm::vec3  SphUtils::velocity_incompressible(std::vector<Particle>::size_type i,
 		float e = 0.5;
 	
 		for (size_t j=0; j<particles.size(); j++) {
-			vr += 2*e*particles[j].mass * (particles[i].vel-particles[j].vel) * grad_kernel(particles[i].pos,particles[j].pos) /(particles[i].density+particles[j].density);
+			if (i != j)
+			vr += 2*e*particles[j].mass * (particles[i].vel-particles[j].vel) * kernel_function(particles[i].pos,particles[j].pos) /(particles[i].density+particles[j].density);
 			//std::cout << vr.length() << std::endl;
 		}
 		return vr;
@@ -451,47 +484,22 @@ glm::vec3  SphUtils::velocity_incompressible(std::vector<Particle>::size_type i,
 /*
  * Detects and handles collisions
  */
-void SphUtils::collision(std::vector<Particle> &particles, std::vector<Wall> &walls) {
-	detect_collisions(particles,walls);
-	//handle_collisions(particles, walls);
-}
-
-/*
- * Detect collisions.
- */
-void SphUtils::detect_collisions(std::vector<Particle> &particles, std::vector<Wall> &walls) {
+void SphUtils::collision(std::vector<Particle> &particles, std::vector<Wall> &walls,std::vector<Sphere> &spheres) {
 	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
+
+		//Check for collisions with the walls
 		for (std::vector<Wall>::size_type j=0; j<walls.size(); j++) {
 			//Collision has occured if n dot (x - po) <= epsilon
 			float dot = glm::dot(walls[j].normal, (particles[i].pos-walls[j].center));
-
-			if ( dot+0.001 <= epsilon || dot-0.001 <= epsilon ){
-				
-			    //float cos = dot / (walls[j].normal.length()* glm::length( (particles[i].pos-walls[j].center) ));
-				//float sin = sqrt(1-cos*cos);
-
-				//float xl = glm::length( (particles[i].pos-walls[j].center)*sin);
-				//float l = T.length();
-				//We have to check if we're out of bounds of the wall
-				//if ( (xl-smooth_length >= walls[j].xlength) || (xl+smooth_length <= walls[j].xlength) ||
-				//	 (xl-smooth_length >= walls[j].ylength) || (xl+smooth_length <= walls[j].ylength) ) {
-				//if ((j = 4) || (j==5)) {
-					//std::cout << i << "colldiing with back/front wall "<< j << std::endl;
-					//std::cout << (particles[i].pos-walls[j].center).x << ", " << (particles[i].pos-walls[j].center).y << ", " << (particles[i].pos-walls[j].center).z << std::endl;
-					///std::cout << "Particle position: " << (particles[i].pos).x << ", " << (particles[i].pos).y << ", " << (particles[i].pos).z << std::endl;
-					//std::cout << "Wall center: " << (walls[j].center).x << ", " << (walls[j].center).y << ", " << (walls[j].center).z << std::endl;
-					//std::cout << "Wall normal center: " << (walls[j].normal).x << ", " << (walls[j].normal).y << ", " << (walls[j].normal).z << std::endl;
-					//std::cout << dot << std::endl << std::endl;
-				//}
-				
+			if ( dot+0.001 <= 0.1 || dot-0.001 <= 0.1 ) {
 					//Reflect the veloicty across the normal.
 					glm::vec3 impulse = glm::normalize(walls[j].normal);
-					impulse *= (1+0.0)*glm::dot(walls[j].normal, particles[i].vel);
+					impulse *= (1.0f+0.0f)*glm::dot(walls[j].normal, particles[i].vel);
 
 					//Repulsive force
-					float fc = glm::dot(-walls[j].normal, particles[i].accel);
+					float fc = 10.0f*dot*glm::dot(-walls[j].normal, particles[i].accel);
 					//std::cout << fc << std::endl;
-					//std::cout << "Before " <<  particles[collisions[i].first].accel.x << ", " <<particles[collisions[i].first].accel.y << ", " <<particles[collisions[i].first].accel.z <<std::endl;
+					//std::cout << "Before " <<  particles[i].vel.x << ", " <<particles[i].vel.y << ", " <<particles[i].vel.z <<std::endl;
 
 					if (fc < 0)
 						fc = 0.0;
@@ -499,21 +507,49 @@ void SphUtils::detect_collisions(std::vector<Particle> &particles, std::vector<W
 					glm::vec3 ac = fc*glm::normalize(walls[j].normal);
 					//impulse *= 0.99;
 					particles[i].vel += -impulse;
-					particles[i].accel += ac;
+					//particles[i].accel += ac;
 					
 					//std::cout << "After " <<  particles[i].vel.x << ", " <<particles[i].vel.y << ", " <<particles[i].vel.z <<std::endl;
 					//collisions.push_back(std::make_pair(i,j));
 				//}
 			}
 		}
-	}
-}
 
-/*
- * Handle collisions. This is done by just applying an instantaneous impulse.
- */
-void SphUtils::handle_collisions(std::vector<Particle> &particles, std::vector<Wall> &walls) {
-	for (std::vector<std::pair<int,int>>::size_type i=0; i<collisions.size(); i++) {
-		//Apply a force to keep the particle from penetrating the wall
+		//Check for collisions with there sphere
+		for (std::vector<Sphere>::size_type j=0; j<spheres.size(); j++) {
+			//Collision has occured if n dot (x - po) <= epsilon
+			/*float dot = glm::dot(walls[j].normal, (particles[i].pos-walls[j].center));
+			if ( dot+0.001 <= 0.1 || dot-0.001 <= 0.1 ) {
+					//Reflect the veloicty across the normal.
+					glm::vec3 impulse = glm::normalize(walls[j].normal);
+					impulse *= (1.0f+0.0f)*glm::dot(walls[j].normal, particles[i].vel);
+
+					//Repulsive force
+					float fc = 10.0f*dot*glm::dot(-walls[j].normal, particles[i].accel);
+					//std::cout << fc << std::endl;
+					//std::cout << "Before " <<  particles[i].vel.x << ", " <<particles[i].vel.y << ", " <<particles[i].vel.z <<std::endl;
+
+					if (fc < 0)
+						fc = 0.0;
+		
+					glm::vec3 ac = fc*glm::normalize(walls[j].normal);
+					//impulse *= 0.99;
+					particles[i].vel += -impulse;
+					//particles[i].accel += ac;
+					
+					//std::cout << "After " <<  particles[i].vel.x << ", " <<particles[i].vel.y << ", " <<particles[i].vel.z <<std::endl;
+					//collisions.push_back(std::make_pair(i,j));
+				//}
+			}*/
+			float dist = glm::length(particles[i].pos-spheres[j].pos);
+			if (dist <= 0.1 + spheres[j].radius) {
+				glm::vec3 u1 = particles[i].vel;
+				glm::vec3 u2 = spheres[j].vel;
+				particles[i].vel = (u1*(particles[i].mass-spheres[j].mass)+2.0f*spheres[j].mass*u2)/ (particles[i].mass+spheres[j].mass);
+				std::cout << "New particle v: " << particles[i].vel.x <<  particles[i].vel.y << particles[i].vel.z << std::endl;
+				spheres[j].vel = (u2*(spheres[j].mass-particles[i].mass)+2.0f*particles[i].mass*u1)/ (particles[i].mass+spheres[j].mass);
+				std::cout << "New sphere v: " << spheres[j].vel.x <<  spheres[j].vel.y << spheres[j].vel.z << std::endl;
+			}
+		}
 	}
 }

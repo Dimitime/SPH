@@ -13,15 +13,19 @@
 
 #define WINDOW_WIDTH 500
 #define WINDOW_HEIGHT 500
-#define NUMBER_PARTICLES 1000
+#define NUMBER_PARTICLES 1300
 #define NUMBER_WALLS 5
+#define NUMBER_SPHERES 1
+#define SPHERE_SLICES 40
 
 static GLScreenCapturer screenshot("Screen/screenshot-%05d.ppm");
 
 //OGL Buffer objects
-GLuint programID;
+GLuint fluidShader;
+GLuint sphereShader;
+GLuint boxShader;
 GLuint vao;
-GLuint vbo;
+GLuint vbo[2];
 //GLuint ebo;
 GLuint MatrixID;
 
@@ -29,17 +33,19 @@ GLuint MatrixID;
 const float dt = 0.001f;
 float total_time = 0.0f;
 
+const float radius = 0.1f;
 //Smoothing length
-const float smooth_length = 1000.0f/NUMBER_PARTICLES;
+const float smooth_length = 6*radius;//1000.0f/NUMBER_PARTICLES;
 
 //The ideal density. This is the density of water
-const float rho0 = 1000.0f;
+const float rho0 = 10.0f;
 //The speed of sound in water
 const float c = 100.0f;
 //An error value used in collision detection
 const float epsilon = 0.1f;
 
 bool toggleSim = true;
+bool dropSphere = true;
 
 //MVP matrices
 // Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
@@ -47,9 +53,9 @@ glm::mat4 Projection = glm::perspective(45.0f, 4.0f / 3.0f, 0.1f, 100.0f);
 
 // Camera matrix
 glm::mat4 View = glm::lookAt(
-    glm::vec3(3.0, 3.0, 15.0), // Camera is at (4,3,3), in World Space
-    glm::vec3(0.0, 0.0, 0.0), // and looks at the origin
-    glm::vec3(0,1,0)  // Head is up (set to 0,-1,0 to look upside-down)
+    glm::vec3(1.5f, 0.2f,3.0f), // Camera is at (4,3,3), in World Space
+    glm::vec3(0.0f, 0.0f, 0.0f), // and looks at the origin
+    glm::vec3(0.0f,1.0f,0.0f)  // Head is up (set to 0,-1,0 to look upside-down)
 );
 
 // Model matrix : an identity matrix (model will be at the origin)
@@ -61,6 +67,34 @@ glm::mat4 MVP = Projection * View * Model; // Remember, matrix multiplication is
 SphUtils sph(smooth_length, rho0, c, dt, epsilon);
 std::vector<Particle> particles;
 std::vector<Wall> walls;
+std::vector<Sphere> spheres;
+
+/* 
+ * Creates a triangle sphere mesh given a center anda radius
+ */
+std::vector<GLfloat> createSphereMesh(glm::vec3 center, float radius) {
+	std::vector<GLfloat> v;
+
+	for(int i = 0; i < SPHERE_SLICES; i++)
+	{
+		double theta0 = glm::pi<float>() * (-0.5 + (double) (i - 1) / SPHERE_SLICES);
+		double theta1 = glm::pi<float>() * (-0.5 + (double) i / SPHERE_SLICES);
+
+		for(int j = 0; j < SPHERE_SLICES; j++)
+		{
+			double phi = 2 * glm::pi<float>() * (double) (j - 1) / SPHERE_SLICES;
+			v.push_back(radius*cos(phi)*cos(theta0)+center.x);
+			v.push_back(radius*sin(phi)*cos(theta0)+center.y);
+			v.push_back(radius* sin(theta0)+center.z);
+
+			v.push_back(radius*cos(phi)*cos(theta1)+center.x);
+			v.push_back(radius*sin(phi)*cos(theta1)+center.y);
+			v.push_back(radius*sin(theta1)+center.z);
+		}
+	}
+
+	return v;
+}
 
 /*
  * Draws the particles and the walls
@@ -79,6 +113,18 @@ void draw_particles() {
 			//std::cout << initpos[j] << ", " << initpos[j+1] << ", " << initpos[j+2] << std::endl; 
 			j+=3; 
 		}
+	
+		//Now get the sphere
+		for (std::vector<Sphere>::size_type i=0; i<spheres.size(); i++) {
+			//Construct a triangular mesh for every sphere
+			std::vector<GLfloat> v = createSphereMesh(spheres[i].pos,spheres[i].radius);
+			for (int k=0; k<v.size(); k+=3) {
+				data[j] = v[k];//spheres[k].pos.x;
+				data[j+1] = v[k+1]; //spheres[k].pos.y;
+				data[j+2] = v[k+2];//spheres[k].pos.z;
+				j+=3;
+			}
+		}
 	}
 	glUnmapBuffer(GL_ARRAY_BUFFER);
 }
@@ -96,41 +142,50 @@ void draw_walls() {
 void disp(void) {
     glClearColor(0.0, 0.0, 0.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    //particles[0].display();
 
 	//glEnableVertexAttribArray(1);
 	//Colors are indices [N...2N-1] in the vbo
 	//glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*) ( WINDOW_WIDTH * WINDOW_HEIGHT * sizeof(glm::vec3)) );
 	
-	glUseProgram(programID);
-	
-	//glBindBuffer(GL_ARRAY_BUFFER, vbo);	
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
 	draw_particles();
 	draw_walls();
- 
-	// Send our transformation to the currently bound shader,
-	// in the "MVP" uniform
-	// For each model you render, since the MVP will be different (at least the M part)
-	glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-
+	
 	//Vertices are indices [0...N-1] in the vbo
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 	glEnableVertexAttribArray(0);
+	//glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);	
+	//Colors are indices [N...2N-1] in the vbo
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0 );
+	glEnableVertexAttribArray(1);
 
-	glBindVertexArray(vao);
+	//Draw the fluid using the fluid shader
+	glUseProgram(fluidShader);
+	MatrixID = glGetUniformLocation(fluidShader, "MVP");
+	glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 	glDrawArrays(GL_POINTS, 0, NUMBER_PARTICLES);
-
-	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	//glDrawElements(GL_POINTS,4*NUMBER_WALLS,GL_UNSIGNED_INT,elements);
-	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	for (int i=0; i< NUMBER_WALLS; i++) {
-		glDrawArrays(GL_LINE_LOOP, NUMBER_PARTICLES+4*i, 4);
+	
+	//Draw the spheres using the sphere shader
+	//glUseProgram(sphereShader);
+	//MatrixID = glGetUniformLocation(sphereShader, "MVP");
+	//glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+	//glUseProgram(boxShader);
+	//MatrixID = glGetUniformLocation(boxShader, "MVP");
+	//glDrawArrays(GL_TRIANGLE_STRIP, NUMBER_PARTICLES,2*SPHERE_SLICES*SPHERE_SLICES*NUMBER_SPHERES);
+	
+	//Draw the box using the box shader
+	//glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+	for (int i=0; i<NUMBER_WALLS; i++) {
+		//std::cout << "drawing wall " << i << std::endl;
+	//	glDrawArrays(GL_LINE_LOOP, NUMBER_PARTICLES+2*SPHERE_SLICES*SPHERE_SLICES*NUMBER_SPHERES+4*i, 4);
 	}
 
 	//unbind everything
-	//glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(1);
 	glDisableVertexAttribArray(0);
 	glUseProgram(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	//glBindBuffer(GL_ARRAY_BUFFER, 0);
 	//glFlush();
 	//std::cout <<"Writing to image" << std::endl;int timems = glutGet(GLUT_ELAPSED_TIME);
@@ -145,15 +200,20 @@ void disp(void) {
  * Advances the scene forward based on a symplectic euler integrator
  */
 void step_scene() {
-	sph.update_cells(particles);
+	//sph.update_cells(particles);
 	//std::cout << "Grid updated" << std::endl;
+	if (!dropSphere) {
+		spheres[0].pos=glm::vec3(0.0f, 0.25f, 0.0f);
+		spheres[0].vel=glm::vec3(0.0f,0.0f, 0.0f);
+	}
+
 	sph.update_density(particles);
 	//std::cout << "Density updated" << std::endl;
-	sph.update_forces(particles);
+	sph.update_forces(particles,spheres);
 	//std::cout << "Forces updated" << std::endl;
-	sph.update_posvel(particles);
+	sph.update_posvel(particles,spheres);
 	//std::cout << "Pos/Vel updated" << std::endl;
-	sph.collision(particles, walls);
+	sph.collision(particles, walls, spheres);
 
 	//std::cout << "Step done" << std::endl;
 	total_time += dt;
@@ -192,8 +252,11 @@ static void keyboard(unsigned char key, int x, int y) {
 			step_scene();
 			glutPostRedisplay();
 			break;
+		case 'd':
+			dropSphere = !dropSphere;
+			break;
 		case 32:
-			toggleSim = ! toggleSim;
+			toggleSim = !toggleSim;
 			break;
 		case 27:
 	exit(0);
@@ -268,6 +331,7 @@ GLuint LoadShaders(const char * vertex_file_path, const char * fragment_file_pat
     GLuint ProgramID = glCreateProgram();
     glAttachShader(ProgramID, VertexShaderID);
     glAttachShader(ProgramID, FragmentShaderID);
+
     glLinkProgram(ProgramID);
  
     // Check the program
@@ -288,9 +352,9 @@ void initParticles() {
 	//Density of water kg/m^3
 	float density = rho0+epsilon;
 	//Start with 1 m^3 of water
-	float volume = 500.0f;
+	float volume = 10.0f;
 	//Mass in KG of each particle
-	float mass =smooth_length*smooth_length*smooth_length*rho0;////density * volume / NUMBER_PARTICLES;// //
+	float mass = .1f*smooth_length*smooth_length*smooth_length*rho0;//density * volume / NUMBER_PARTICLES;// ////////
 	std::cout << "Mass: " << mass << std::endl;
 	//Pressure of the fluid
 	float pressure = 1.0f;
@@ -299,20 +363,21 @@ void initParticles() {
 	//Thermal energy? I might get rid of this
 	float thermal = 1.0f;
 
-	float x = -2.5f;
+	float x = -0.5f;
 	float zvel = 0.0f;
-    for (int i=0; i<10; i++) {
-		float y = -4.9f;
-		x += smooth_length/2.0f;
+	float yvel = 0.0f;//-1.0f;
+    for (int i=0; i<13; i++) {
+		float y = -0.9f;
         for (int j=0; j<10; j++) {
-			y += smooth_length/2.0f;
-			float z = -2.5f;
+			float z =  -0.5f;
 			for (int k=0; k<10; k++) {
-				z += smooth_length/2.0f;
-				Particle part(glm::vec3(x,y,z), glm::vec3(0.0f,0.0f,zvel*j), glm::vec3(0.0f,0.0f,0.0f), mass, density, pressure, thermal);
+				Particle part(glm::vec3(x,y,z), glm::vec3(0.0f,yvel,zvel*j), glm::vec3(0.0f,0.0f,0.0f), mass, density, pressure, thermal);
 				particles.push_back(part);
+				z += radius;
 			}
+			y += radius;
         }
+		x += radius;
     }
 
 	std::cout << particles.size() << std::endl;
@@ -320,38 +385,29 @@ void initParticles() {
 
 //Init the values of the walls
 void initWalls() {
-/*	glm::vec3 c1(-0.6f,0.6f,0.6f);
-	glm::vec3 c2(-0.6f,-1.3f,0.6f);
-	glm::vec3 c3(-0.6f,0.6f,-0.6f);
-	glm::vec3 c4(-0.6f,-1.3f,-0.6f);
-	glm::vec3 c5(0.6f,0.6f,-0.60f);
-	glm::vec3 c6(0.6f,-1.3f,-0.6f);
-	glm::vec3 c7(0.6f,0.6f,0.6f);
-	glm::vec3 c8(0.6f,-1.3f,0.6f);
-*/
 	//The side walls
-	glm::vec3 center1(-5.0f, 0.0f, 0.0f);
+	glm::vec3 center1(-1.0f, 0.0f, 0.0f);
 	glm::vec3 normal1(1.0f, 0.0f, 0.0f);
-	float xlength = 5.0f;
-	float ylength = 5.0f;
+	float xlength = 1.0f;
+	float ylength = 1.0f;
 
-	glm::vec3 center2(5.0f, 0.0f, 0.0f);
+	glm::vec3 center2(1.0f, 0.0f, 0.0f);
 	glm::vec3 normal2(-1.0f, 0.0f, 0.0f);
 	Wall w1(center1,normal1,xlength,ylength);
 	Wall w2(center2,normal2,xlength,ylength);
 
 	//The bottom wall
-	glm::vec3 center3(0.0f, -5.0f, 0.0f);
+	glm::vec3 center3(0.0f, -1.0f, 0.0f);
 	glm::vec3 normal3(0.0f, 1.0f, 0.0f);
 	Wall w3(center3,normal3,xlength,xlength);
 
 	//The front wall
-	glm::vec3 center4(0.0f, 0.0f,5.0);
+	glm::vec3 center4(0.0f, 0.0f,1.0);
 	glm::vec3 normal4(0.0f, 0.0f,-1.0f);
 	Wall w4(center4,normal4,xlength,xlength);
 
 	//The back wall
-	glm::vec3 center5(0.0f, 0.0f, -5.0f);
+	glm::vec3 center5(0.0f, 0.0f, -1.0f);
 	glm::vec3 normal5(0.0f, 0.0f,1.0f);
 	Wall w5(center5,normal5,xlength,xlength);
 
@@ -362,9 +418,20 @@ void initWalls() {
 	walls.push_back(w3);
 }
 
+void initSpheres() {
+	glm::vec3 pos(0.0f, 0.25f, 0.0f);
+	glm::vec3 vel(0.0f,0.0f, 0.0f);
+	float raidus = 0.2f;
+	float mass = 2.0f;
+
+	Sphere s(pos, vel, radius, mass);
+	spheres.push_back(s);
+}
+
 //Initialize all the particles and walls
 void initScene() {
 	initParticles();
+	initSpheres();
 	initWalls();
 }
 
@@ -381,30 +448,41 @@ void init() {
 	glBindVertexArray(vao);
 
 	//Load the shaders
-	programID = LoadShaders( "Shaders/sph.vertexshader", "Shaders/sph.fragmentshader" );
-
-	// Get a handle for our "MVP" uniform.
-	MatrixID = glGetUniformLocation(programID, "MVP");
+	fluidShader = LoadShaders( "Shaders/sph.vertexshader", "Shaders/sph.fragmentshader" );
+	boxShader = LoadShaders( "Shaders/sph.vertexshader", "Shaders/sph.fragmentshader" );
+	//sphereShader = LoadShaders( "Shaders/sph.vertexshader", "Shaders/sph.fragmentshader" );
 
     initScene();
-
+	GLuint sphereVerts = 2*SPHERE_SLICES*SPHERE_SLICES; //3200 vertixes
 	//Extract the positions so we can intialize the particles
-    GLfloat initpos[3*(NUMBER_PARTICLES+4*NUMBER_WALLS)];
+    GLfloat* initpos = new GLfloat[3*(NUMBER_PARTICLES+4*NUMBER_WALLS+sphereVerts*NUMBER_SPHERES)];
     int j=0;
     for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
         initpos[j] = particles[i].pos.x;
         initpos[j+1] = particles[i].pos.y;
-        initpos[j+2] = particles[i].pos.z;
-        //std::cout << initpos[j] << ", " << initpos[j+1] << ", " << initpos[j+2] << std::endl; 
+        initpos[j+2] = particles[i].pos.z; 
         j += 3; 
     }
+	
+	//Now get the sphere
+	for (std::vector<Sphere>::size_type i=0; i<spheres.size(); i++) {
+		//Construct a triangular mesh for every sphere
+		std::vector<GLfloat> v = createSphereMesh(spheres[i].pos,spheres[i].radius);
+		std::cout << "Number of vertices in sphere: " << v.size();
+		for (int k=0; k<v.size(); k+=3) {
+			initpos[j] = v[k];//spheres[k].pos.x;
+			initpos[j+1] = v[k+1]; //spheres[k].pos.y;
+			initpos[j+2] = v[k+2];//spheres[k].pos.z;
+			j+=3;
+		}
+	}
 
 	//The two side walls
 	for (std::vector<Wall>::size_type i=0; i<2; i++) {
 		initpos[j] = walls[i].center.x;
         initpos[j+1] = walls[i].center.y+walls[i].ylength;
         initpos[j+2] = walls[i].center.z+walls[i].xlength;
-	
+
 		initpos[j+3] = walls[i].center.x;
         initpos[j+4] = walls[i].center.y-walls[i].ylength;
         initpos[j+5] = walls[i].center.z+walls[i].xlength;
@@ -457,21 +535,65 @@ void init() {
 	initpos[j+9] = walls[i].center.x-walls[i].xlength;
     initpos[j+10] = walls[i].center.y;
     initpos[j+11] = walls[i].center.z+walls[i].ylength;
-	//Create vertex buffer object
-	glGenBuffers(1, &vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	
-	size_t size = 3*sizeof(GLfloat)*(NUMBER_PARTICLES+4*NUMBER_WALLS);
-	//Initialize the vbo to the initial positions
-	glBufferData(GL_ARRAY_BUFFER, size, initpos, GL_STREAM_DRAW);
-	//glBindBuffer(GL_ARRAY_BUFFER, 0);
-/*
-	int offset=NUMBER_PARTICLES;
+    //j += 12; 
 
-	glGenBuffers(1, &ebo);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW);
-*/}
+	j=0;
+
+	std::cout << "Positions done" << std::endl;
+	//Add colors
+	
+    GLfloat* colors = new GLfloat[3*(NUMBER_PARTICLES+4*NUMBER_WALLS+sphereVerts*NUMBER_SPHERES)];
+
+	//Set the particles to be blue
+	for (std::vector<Particle>::size_type c=0; c<particles.size(); c++) {
+        colors[j] = 0;
+		colors[j+1] = 0;
+        colors[j+2] = 1.0f;//255;
+		j+=3;
+	}
+
+	//Set the sphere to be green.
+	for (std::vector<Sphere>::size_type c=0; c<spheres.size(); c++) {
+		//Construct a triangular mesh for every sphere
+		std::vector<GLfloat> v = createSphereMesh(spheres[i].pos,spheres[i].radius);
+		std::cout << "Number of vertices in sphere2: " << v.size();
+		for (int k=0; k<v.size(); k+=3) {
+			colors[j] = 0.0f;//spheres[k].pos.x;
+			colors[j+1] = 1.0f; //spheres[k].pos.y;
+			colors[j+2] = 0.0f;//spheres[k].pos.z;
+		j+=3;
+		}
+	}
+
+	//Set walls to be red?
+	for (std::vector<Wall>::size_type c=0; c<4*walls.size(); c++) {
+        colors[j] = 1.0f;//255;
+        colors[j+1] = 0;
+        colors[j+2] = 0;
+		j+=3;
+	}
+
+	//Create vertex buffer object
+	glGenBuffers(2, vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
+	
+	size_t size1 = 3*sizeof(GLfloat)*(NUMBER_PARTICLES+4*NUMBER_WALLS+sphereVerts*NUMBER_SPHERES);
+	//Initialize the vbo to the initial positions
+	glBufferData(GL_ARRAY_BUFFER, size1, initpos, GL_STREAM_DRAW);
+
+	//glGenBuffers(1, &vboc);
+    glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
+	size_t size2 = 3*sizeof(GLubyte)*(NUMBER_PARTICLES+4*NUMBER_WALLS);
+	glBufferData(GL_ARRAY_BUFFER, size1, colors, GL_STREAM_DRAW);
+    glEnableVertexAttribArray(1);
+	//glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	delete [] initpos;
+	delete [] colors;
+
+	std::cout <<"Buffer setup complete" << std::endl;
+}
 
 /*
  * Main function
