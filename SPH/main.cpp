@@ -170,15 +170,15 @@ void disp(void) {
 	//glUseProgram(sphereShader);
 	//MatrixID = glGetUniformLocation(sphereShader, "MVP");
 	//glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-	//glUseProgram(boxShader);
-	//MatrixID = glGetUniformLocation(boxShader, "MVP");
-	//glDrawArrays(GL_TRIANGLE_STRIP, NUMBER_PARTICLES,2*SPHERE_SLICES*SPHERE_SLICES*NUMBER_SPHERES);
+	glUseProgram(boxShader);
+	MatrixID = glGetUniformLocation(boxShader, "MVP");
+	glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
+	glDrawArrays(GL_TRIANGLE_STRIP, NUMBER_PARTICLES,2*SPHERE_SLICES*SPHERE_SLICES*NUMBER_SPHERES);
 	
 	//Draw the box using the box shader
-	//glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
 	for (int i=0; i<NUMBER_WALLS; i++) {
 		//std::cout << "drawing wall " << i << std::endl;
-	//	glDrawArrays(GL_LINE_LOOP, NUMBER_PARTICLES+2*SPHERE_SLICES*SPHERE_SLICES*NUMBER_SPHERES+4*i, 4);
+		glDrawArrays(GL_LINE_LOOP, NUMBER_PARTICLES+2*SPHERE_SLICES*SPHERE_SLICES*NUMBER_SPHERES+4*i, 4);
 	}
 
 	//unbind everything
@@ -439,7 +439,7 @@ void initScene() {
 void init() {
 	glClearColor(0.0, 0.0, 0.0, 1.0);
 	glEnable(GL_PROGRAM_POINT_SIZE);
-	glEnable(GL_DEPTH_TEST);
+	//glEnable(GL_DEPTH_TEST);
 	// Accept fragment if it closer to the camera than the former one
 	glDepthFunc(GL_LESS);
 
