@@ -8,7 +8,6 @@
 #include <GL/glut.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform2.hpp>
-#include "GLScreenCapturer.h"
 #include "SphUtils.hpp"
 
 #define WINDOW_WIDTH 500
@@ -17,8 +16,6 @@
 #define NUMBER_WALLS 5
 #define NUMBER_SPHERES 1
 #define SPHERE_SLICES 40
-
-static GLScreenCapturer screenshot("Screen/screenshot-%05d.ppm");
 
 //OGL Buffer objects
 GLuint fluidShader;
@@ -35,8 +32,7 @@ float total_time = 0.0f;
 
 const float radius = 0.1f;
 //Smoothing length
-const float smooth_length = 6*radius;//1000.0f/NUMBER_PARTICLES;
-
+const float smooth_length = 6*radius;
 //The ideal density. This is the density of water
 const float rho0 = 10.0f;
 //The speed of sound in water
@@ -45,15 +41,13 @@ const float c = 100.0f;
 const float epsilon = 0.1f;
 
 bool toggleSim = true;
-bool dropSphere = true;
 
 //MVP matrices
 // Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
 glm::mat4 Projection = glm::perspective(45.0f, 4.0f / 3.0f, 0.1f, 100.0f);
-
 // Camera matrix
 glm::mat4 View = glm::lookAt(
-    glm::vec3(1.5f, 0.2f,3.0f), // Camera is at (4,3,3), in World Space
+    glm::vec3(1.5f, 1.0f,3.0f), // Camera is at (1.5,1,3), in World Space
     glm::vec3(0.0f, 0.0f, 0.0f), // and looks at the origin
     glm::vec3(0.0f,1.0f,0.0f)  // Head is up (set to 0,-1,0 to look upside-down)
 );
@@ -75,14 +69,12 @@ std::vector<Sphere> spheres;
 std::vector<GLfloat> createSphereMesh(glm::vec3 center, float radius) {
 	std::vector<GLfloat> v;
 
-	for(int i = 0; i < SPHERE_SLICES; i++)
-	{
-		double theta0 = glm::pi<float>() * (-0.5 + (double) (i - 1) / SPHERE_SLICES);
-		double theta1 = glm::pi<float>() * (-0.5 + (double) i / SPHERE_SLICES);
+	for(int i = 0; i < SPHERE_SLICES; i++) {
+		float theta0 = glm::pi<float>() * (-0.5f + (float) (i - 1) / SPHERE_SLICES);
+		float theta1 = glm::pi<float>() * (-0.5f + (float) i / SPHERE_SLICES);
 
-		for(int j = 0; j < SPHERE_SLICES; j++)
-		{
-			double phi = 2 * glm::pi<float>() * (double) (j - 1) / SPHERE_SLICES;
+		for(int j = 0; j < SPHERE_SLICES; j++) {
+			float phi = 2 * glm::pi<float>() * (float) (j - 1) / SPHERE_SLICES;
 			v.push_back(radius*cos(phi)*cos(theta0)+center.x);
 			v.push_back(radius*sin(phi)*cos(theta0)+center.y);
 			v.push_back(radius* sin(theta0)+center.z);
@@ -118,7 +110,7 @@ void draw_particles() {
 		for (std::vector<Sphere>::size_type i=0; i<spheres.size(); i++) {
 			//Construct a triangular mesh for every sphere
 			std::vector<GLfloat> v = createSphereMesh(spheres[i].pos,spheres[i].radius);
-			for (int k=0; k<v.size(); k+=3) {
+			for (std::vector<GLfloat>::size_type k=0; k<v.size(); k+=3) {
 				data[j] = v[k];//spheres[k].pos.x;
 				data[j+1] = v[k+1]; //spheres[k].pos.y;
 				data[j+2] = v[k+2];//spheres[k].pos.z;
@@ -127,10 +119,6 @@ void draw_particles() {
 		}
 	}
 	glUnmapBuffer(GL_ARRAY_BUFFER);
-}
-
-void draw_walls() {
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -142,14 +130,9 @@ void draw_walls() {
 void disp(void) {
     glClearColor(0.0, 0.0, 0.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	//glEnableVertexAttribArray(1);
-	//Colors are indices [N...2N-1] in the vbo
-	//glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*) ( WINDOW_WIDTH * WINDOW_HEIGHT * sizeof(glm::vec3)) );
 	
 	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
 	draw_particles();
-	draw_walls();
 	
 	//Vertices are indices [0...N-1] in the vbo
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
@@ -186,13 +169,6 @@ void disp(void) {
 	glDisableVertexAttribArray(0);
 	glUseProgram(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	//glBindBuffer(GL_ARRAY_BUFFER, 0);
-	//glFlush();
-	//std::cout <<"Writing to image" << std::endl;int timems = glutGet(GLUT_ELAPSED_TIME);
-	//if ((int)(total_time*10000) % 100) {
-	//	std::cout << "Printing at time" << total_time << std::endl;
-	//	screenshot.capture();
-	//}
 	glutSwapBuffers();
 }
 
@@ -200,13 +176,8 @@ void disp(void) {
  * Advances the scene forward based on a symplectic euler integrator
  */
 void step_scene() {
-	//sph.update_cells(particles);
+	sph.update_cells(particles);
 	//std::cout << "Grid updated" << std::endl;
-	if (!dropSphere) {
-		spheres[0].pos=glm::vec3(0.0f, 0.25f, 0.0f);
-		spheres[0].vel=glm::vec3(0.0f,0.0f, 0.0f);
-	}
-
 	sph.update_density(particles);
 	//std::cout << "Density updated" << std::endl;
 	sph.update_forces(particles,spheres);
@@ -236,13 +207,6 @@ static void idle() {
 // Control Functions
 ////////////////////////////////////////////////////////////////////////////////////////////
 /*
- * Mouse function for GLUT
- *
- */ 
-void mouse(int button, int state, int x, int y) {
-}
-
-/*
  * Keyboard functions for GLUT
  *
  */ 
@@ -252,22 +216,12 @@ static void keyboard(unsigned char key, int x, int y) {
 			step_scene();
 			glutPostRedisplay();
 			break;
-		case 'd':
-			dropSphere = !dropSphere;
-			break;
 		case 32:
 			toggleSim = !toggleSim;
 			break;
 		case 27:
 	exit(0);
     }
-}
-
-/*
- * Keyboard functions for GLUT
- *
- */ 
-static void skeyboard(int key, int x, int y) {
 }
 
 //Loading shelders
@@ -351,10 +305,8 @@ GLuint LoadShaders(const char * vertex_file_path, const char * fragment_file_pat
 void initParticles() {
 	//Density of water kg/m^3
 	float density = rho0+epsilon;
-	//Start with 1 m^3 of water
-	float volume = 10.0f;
 	//Mass in KG of each particle
-	float mass = .1f*smooth_length*smooth_length*smooth_length*rho0;//density * volume / NUMBER_PARTICLES;// ////////
+	float mass = .1f*smooth_length*smooth_length*smooth_length*rho0;
 	std::cout << "Mass: " << mass << std::endl;
 	//Pressure of the fluid
 	float pressure = 1.0f;
@@ -422,7 +374,7 @@ void initSpheres() {
 	glm::vec3 pos(0.0f, 0.25f, 0.0f);
 	glm::vec3 vel(0.0f,0.0f, 0.0f);
 	float raidus = 0.2f;
-	float mass = 2.0f;
+	float mass = 1.2f;
 
 	Sphere s(pos, vel, radius, mass);
 	spheres.push_back(s);
@@ -439,7 +391,7 @@ void initScene() {
 void init() {
 	glClearColor(0.0, 0.0, 0.0, 1.0);
 	glEnable(GL_PROGRAM_POINT_SIZE);
-	//glEnable(GL_DEPTH_TEST);
+	glEnable(GL_DEPTH_TEST);
 	// Accept fragment if it closer to the camera than the former one
 	glDepthFunc(GL_LESS);
 
@@ -469,10 +421,10 @@ void init() {
 		//Construct a triangular mesh for every sphere
 		std::vector<GLfloat> v = createSphereMesh(spheres[i].pos,spheres[i].radius);
 		std::cout << "Number of vertices in sphere: " << v.size();
-		for (int k=0; k<v.size(); k+=3) {
-			initpos[j] = v[k];//spheres[k].pos.x;
-			initpos[j+1] = v[k+1]; //spheres[k].pos.y;
-			initpos[j+2] = v[k+2];//spheres[k].pos.z;
+		for (std::vector<GLfloat>::size_type k=0; k<v.size(); k+=3) {
+			initpos[j] = v[k];
+			initpos[j+1] = v[k+1];
+			initpos[j+2] = v[k+2];
 			j+=3;
 		}
 	}
@@ -535,20 +487,17 @@ void init() {
 	initpos[j+9] = walls[i].center.x-walls[i].xlength;
     initpos[j+10] = walls[i].center.y;
     initpos[j+11] = walls[i].center.z+walls[i].ylength;
-    //j += 12; 
 
-	j=0;
 
-	std::cout << "Positions done" << std::endl;
 	//Add colors
-	
+	j=0;
     GLfloat* colors = new GLfloat[3*(NUMBER_PARTICLES+4*NUMBER_WALLS+sphereVerts*NUMBER_SPHERES)];
 
 	//Set the particles to be blue
 	for (std::vector<Particle>::size_type c=0; c<particles.size(); c++) {
         colors[j] = 0;
 		colors[j+1] = 0;
-        colors[j+2] = 1.0f;//255;
+        colors[j+2] = 1.0f;
 		j+=3;
 	}
 
@@ -557,17 +506,17 @@ void init() {
 		//Construct a triangular mesh for every sphere
 		std::vector<GLfloat> v = createSphereMesh(spheres[i].pos,spheres[i].radius);
 		std::cout << "Number of vertices in sphere2: " << v.size();
-		for (int k=0; k<v.size(); k+=3) {
-			colors[j] = 0.0f;//spheres[k].pos.x;
-			colors[j+1] = 1.0f; //spheres[k].pos.y;
-			colors[j+2] = 0.0f;//spheres[k].pos.z;
+		for (std::vector<GLfloat>::size_type k=0; k<v.size(); k+=3) {
+			colors[j] = 0.0f;
+			colors[j+1] = 1.0f;
+			colors[j+2] = 0.0f;
 		j+=3;
 		}
 	}
 
 	//Set walls to be red?
 	for (std::vector<Wall>::size_type c=0; c<4*walls.size(); c++) {
-        colors[j] = 1.0f;//255;
+        colors[j] = 1.0f;
         colors[j+1] = 0;
         colors[j+2] = 0;
 		j+=3;
@@ -587,7 +536,6 @@ void init() {
 	size_t size2 = 3*sizeof(GLubyte)*(NUMBER_PARTICLES+4*NUMBER_WALLS);
 	glBufferData(GL_ARRAY_BUFFER, size1, colors, GL_STREAM_DRAW);
     glEnableVertexAttribArray(1);
-	//glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	delete [] initpos;
 	delete [] colors;
@@ -616,8 +564,6 @@ int main (int argc, char** argv) {
 	glutDisplayFunc(&disp);
     glutIdleFunc(&idle);
     glutKeyboardFunc(&keyboard);
-	glutSpecialFunc(&skeyboard);
-    glutMouseFunc(&mouse); 
 
 	glewExperimental=GL_TRUE;
 	GLenum err=glewInit();

@@ -83,14 +83,11 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="GLScreenCapturer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="SphUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GLScreenCapturer.h" />
     <ClInclude Include="Sphere.hpp" />
-    <ClInclude Include="macros.h" />
     <ClInclude Include="Wall.hpp" />
     <ClInclude Include="Particle.hpp" />
     <ClInclude Include="SphUtils.hpp" />
