@@ -1,7 +1,5 @@
 /*
  * Class definition for a Wall
- * the walls are pretty straightforward, but one thing to note is that in the initialization the pairs of
- * unconnected corners are c1/c4 and c2/c3
  */
 
 #include <glm/glm.hpp>
@@ -26,9 +24,6 @@ public:
 
     //Destructor
 	~Wall(){}
-
-	void render_wall() {
-	}
 
 //private:
     glm::vec3 normal;

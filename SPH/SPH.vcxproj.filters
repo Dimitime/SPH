@@ -24,24 +24,18 @@
     <ClCompile Include="SphUtils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GLScreenCapturer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Particle.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SphUtils.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Wall.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GLScreenCapturer.h">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="SphUtils.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="macros.h">
+    <ClInclude Include="Sphere.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

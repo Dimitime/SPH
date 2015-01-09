@@ -83,16 +83,14 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="GLScreenCapturer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="SphUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GLScreenCapturer.h" />
-    <ClInclude Include="macros.h" />
+    <ClInclude Include="Sphere.hpp" />
     <ClInclude Include="Wall.hpp" />
     <ClInclude Include="Particle.hpp" />
-    <ClInclude Include="SphUtils.h" />
+    <ClInclude Include="SphUtils.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
