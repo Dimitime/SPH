@@ -1,11 +1,12 @@
 # Makefile for the project
-CC = g++
-LIBS = -lGL -lGLU -lGLEW -lglfw3 -lm -lXrandr -lXi -lX11 -lXxf86vm -lpthread
+CC = g++ -std=c++0x
+INCLUDE = -I./deps/
+LIBS = -lGL -lGLU -lGLEW -lglut
 
 all: sph
 
 sph: main.cpp
-	$(CC) -o sph main.cpp -Wall $(LIBS)
+	$(CC)  -o sph main.cpp SphUtils.cpp -Wall $(INCLUDE) $(LIBS) 
 
 clean:
 	rm -rf *o sph
