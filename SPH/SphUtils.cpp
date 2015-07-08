@@ -88,7 +88,8 @@ float SphUtils::lap_kernel(glm::vec3 i, glm::vec3 j) {
 
 	float result = 0.0f;
 	if (q < smooth_length)
-		result = 45/((float)glm::pi<float>()*pow(smooth_length,6)) * (smooth_length-q);
+//		result = 45/((float)glm::pi<float>()*pow(smooth_length,6)) * (smooth_length-q);
+		result = 45/((float)glm::pi<float>()*pow(smooth_length,5)) * (1-q/smooth_length);
 	return result;
 
 }
@@ -102,13 +103,14 @@ void SphUtils::update_density(std::vector<Particle> &particles) {
 	int nz = (int)ceil( (maxz-minz)/cell_dimensions)+1;
 
 	//loop through the cells
-	for (std::vector<std::vector<int>>::size_type i=0; i<cells.size(); i++) {
+//	for (std::vector<std::vector<int>>::size_type i=0; i<cells.size(); i++) {
+	for (std::vector<std::vector<int>>::size_type i=0; i<particles.size(); i++) {
 		//loop through each particle in the cell
-		for (std::vector<int>::size_type m=0; m<cells[i].size(); m++) {
+//		for (std::vector<int>::size_type m=0; m<cells[i].size(); m++) {
 			float density = 0.0f;
 
-			int p1_index = cells[i][m];
-			//We need to also check adjacent cells
+			int p1_index = i;//cells[i][m];
+/*			//We need to also check adjacent cells
 			for (int a=-1; a<1; a++) {
 				for (int b=-1; b<1; b++) {
 					for (int c=-1; c<1; c++) {
@@ -125,20 +127,24 @@ void SphUtils::update_density(std::vector<Particle> &particles) {
 						else {
 							unsigned int j = tx + nx*ty+ (nx*ny + ny)*tz;
 							for (std::vector<int>::size_type n=0; n<cells[j].size(); n++) {
-								int p2_index = cells[j][n];
+*/							for (std::vector<int>::size_type j=0; j<particles.size(); j++) {
+								int p2_index = j;//cells[j][n];
 								if (p1_index != p2_index) {			
-									density += particles[p2_index].mass* glm::dot( (particles[p1_index].vel-particles[p2_index].vel), grad_kernel(particles[p1_index].pos, particles[p2_index].pos) );
+									density += particles[p2_index].mass* kernel_function(particles[p1_index].pos, particles[p2_index].pos);//glm::dot( (particles[p1_index].vel-particles[p2_index].vel), grad_kernel(particles[p1_index].pos, particles[p2_index].pos) );
 								}
 							}
-						}
+//						}
 
-					}
-				}
-			}
-			//}
-			particles[p1_index].density += dt*density;
+//					}
+//				}
+//			}
+			if (density < rho0)
+				density = rho0;
+			particles[p1_index].density = density;
 			particles[p1_index].pressure = 100.0f * (particles[p1_index].density - rho0);
-		}
+			//if (p1_index == 1)
+			//	std::cout << (particles[p1_index].density-rho0) << ", " << particles[p1_index].pressure << std::endl;
+//		}
 	}
 }
 
@@ -166,7 +172,7 @@ void SphUtils::update_forces(std::vector<Particle> &particles,std::vector<Sphere
 	pressure_forces(particles);
 
 	//Add the forces due to viscosity
-	viscosity_forces(particles);
+//	viscosity_forces(particles);
 }
 
 /*
@@ -178,12 +184,13 @@ void SphUtils::pressure_forces(std::vector<Particle> &particles) {
 	int nz = (int)ceil( (maxz-minz)/cell_dimensions)+1;
 
 	//loop through the cells
-	for (std::vector<std::vector<int>>::size_type i=0; i<cells.size(); i++) {
+//	for (std::vector<std::vector<int>>::size_type i=0; i<cells.size(); i++) {
+	for (std::vector<std::vector<int>>::size_type i=0; i<particles.size(); i++) {
 		//loop through each particle in the cell
-		for (std::vector<int>::size_type m=0; m<cells[i].size(); m++) {
+//		for (std::vector<int>::size_type m=0; m<cells[i].size(); m++) {
 			//and loop through the cells again...
-			int p1_index = cells[i][m];
-			//We need to also check adjacent cells
+			int p1_index = i;//cells[i][m];
+/*			//We need to also check adjacent cells
 			for (int a=-1; a<1; a++) {
 				for (int b=-1; b<1; b++) {
 					for (int c=-1; c<1; c++) {
@@ -202,7 +209,8 @@ void SphUtils::pressure_forces(std::vector<Particle> &particles) {
 
 							//loop through each particle in the cell
 							for (std::vector<int>::size_type n=0; n<cells[j].size(); n++) {
-								int p2_index = cells[j][n];
+*/							for (std::vector<int>::size_type j=0; j<particles.size(); j++) {
+								int p2_index = j;//cells[j][n];
 
 								//std::cout << "Pairs" << i << ", " << j << " p1: " << p1_index << " p2: " << p2_index << std::endl;
 								if ( p1_index != p2_index) {
@@ -222,11 +230,11 @@ void SphUtils::pressure_forces(std::vector<Particle> &particles) {
 									particles[p1_index].accel += temp * grad_kernel(particles[p1_index].pos, particles[p2_index].pos);
 								}
 							}
-						}
-					}
-				}
-			}
-		}
+//						}
+//					}
+//				}
+//			}
+//		}
 	}
 }
 
@@ -315,14 +323,14 @@ void SphUtils::update_posvel(std::vector<Particle> &particles,std::vector<Sphere
 		//Update the velocities based on the forces
 		// a = F/m
 		//vi+1 = vi + dt*a
-		//Hack to keep it from exploding
-		particles[i].vel = particles[i].vel +  dt * particles[i].accel;
+		particles[i].vel = particles[i].vel + dt*particles[i].accel;
 
-		particles[i].pos = particles[i].pos +dt * (particles[i].vel);
+		particles[i].pos = particles[i].pos + dt*(particles[i].vel);
+		//std::cout << particles[i].pos.x << ","<< particles[i].pos.y << ","<< particles[i].pos.z << std::endl;
 	}
 	for (std::vector<Sphere>::size_type i=0; i<spheres.size(); i++) {
-		spheres[i].vel = spheres[i].vel +  dt * spheres[i].accel;
-		spheres[i].pos = spheres[i].pos +dt * (spheres[i].vel);
+		spheres[i].vel = spheres[i].vel + dt*spheres[i].accel;
+		spheres[i].pos = spheres[i].pos + dt*(spheres[i].vel);
 	}
 }
 
@@ -334,28 +342,35 @@ void SphUtils::update_posvel(std::vector<Particle> &particles,std::vector<Sphere
  */
 void SphUtils::collision(std::vector<Particle> &particles, std::vector<Wall> &walls,std::vector<Sphere> &spheres) {
 	for (std::vector<Particle>::size_type i=0; i<particles.size(); i++) {
-
 		//Check for collisions with the walls
 		for (std::vector<Wall>::size_type j=0; j<walls.size(); j++) {
 			//Collision has occured if n dot (x - po) <= epsilon
 			float dot = glm::dot(walls[j].normal, (particles[i].pos-walls[j].center));
-			if ( dot+0.001 <= 0.1 || dot-0.001 <= 0.1 ) {
+			if ( dot+0.001 <= 0.01 || dot-0.001 <= 0.01 ) {
 					//Reflect the veloicty across the normal.
 					glm::vec3 impulse = glm::normalize(walls[j].normal);
 					impulse *= (1.0f+0.0f)*glm::dot(walls[j].normal, particles[i].vel);
 
 					//Repulsive force
-					float fc = 10.0f*dot*glm::dot(-walls[j].normal, particles[i].accel);
+//					float fc = 10.0f*(0.01 - dot);//*glm::dot(-walls[j].normal, particles[i].accel);
+//					if (fc < 0)
+//						fc = 0.0;
+//					
+//					particles[i].accel += fc*walls[j].normal;
 
-					if (fc < 0)
-						fc = 0.0;
-		
-					glm::vec3 ac = fc*glm::normalize(walls[j].normal);
+					//glm::vec3 ac = fc*glm::normalize(walls[j].normal);
 					//impulse *= 0.99;
+
+					//Put the particle back in legal range
+					if (dot < 0)
+						dot = -dot;
+					particles[i].pos += dot*walls[j].normal;
+					//std::cout << "pos: " << particles[i].pos.x << " " << particles[i].pos.y << " " << particles[i].pos.z << std::endl;
 					particles[i].vel += -impulse;
+					//std::cout << "vel: " << particles[i].vel.x << " " << particles[i].vel.y << " " << particles[i].vel.z << std::endl;
 			}
 		}
-
+/*
 		//Check for collisions with there sphere
 		for (std::vector<Sphere>::size_type j=0; j<spheres.size(); j++) {
 			float dist = glm::length(particles[i].pos-spheres[j].pos);
@@ -363,10 +378,10 @@ void SphUtils::collision(std::vector<Particle> &particles, std::vector<Wall> &wa
 				glm::vec3 u1 = particles[i].vel;
 				glm::vec3 u2 = spheres[j].vel;
 				particles[i].vel = (u1*(particles[i].mass-spheres[j].mass)+2.0f*spheres[j].mass*u2)/ (particles[i].mass+spheres[j].mass);
-				std::cout << "New particle v: " << particles[i].vel.x <<  particles[i].vel.y << particles[i].vel.z << std::endl;
+//				std::cout << "New particle v: " << particles[i].vel.x <<  particles[i].vel.y << particles[i].vel.z << std::endl;
 				spheres[j].vel = (u2*(spheres[j].mass-particles[i].mass)+2.0f*particles[i].mass*u1)/ (particles[i].mass+spheres[j].mass);
-				std::cout << "New sphere v: " << spheres[j].vel.x <<  spheres[j].vel.y << spheres[j].vel.z << std::endl;
+//				std::cout << "New sphere v: " << spheres[j].vel.x <<  spheres[j].vel.y << spheres[j].vel.z << std::endl;
 			}
 		}
-	}
+*/	}
 }
