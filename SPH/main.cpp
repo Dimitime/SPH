@@ -220,7 +220,6 @@ void update_colors()
 	glUnmapBuffer(GL_ARRAY_BUFFER);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////
 // Rendering and Animation Functions
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -228,7 +227,7 @@ void update_colors()
  * display function for GLUT
  */	
 void disp(void) {
-    glClearColor(0.99f, 0.99f, 0.99f, 1.0f);
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
 	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
@@ -259,7 +258,7 @@ void disp(void) {
 	glUseProgram(boxShader);
 	MatrixID = glGetUniformLocation(boxShader, "MVP");
 	glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP[0][0]);
-	//glDrawArrays(GL_TRIANGLE_STRIP, particles.size(),2*SPHERE_SLICES*SPHERE_SLICES*NUMBER_SPHERES);
+	glDrawArrays(GL_TRIANGLE_STRIP, particles.size(),2*SPHERE_SLICES*SPHERE_SLICES*NUMBER_SPHERES);
 	
 	//Draw the box using the box shader
 	for (int i=0; i<NUMBER_WALLS; i++) {
@@ -301,7 +300,7 @@ void step_scene() {
 static void idle() {
 	int timems = glutGet(GLUT_ELAPSED_TIME);
 
-	if (timems % 1 == 0) {
+	if (timems % 10 == 0) {
 		if (toggleSim)
 			step_scene();
         glutPostRedisplay();
@@ -521,27 +520,31 @@ void initWalls() {
 
 void initSpheres() {
 	glm::vec3 pos(0.0f, 0.25f, 0.0f);
-	glm::vec3 vel(0.0f,0.0f, 0.0f);
+	glm::vec3 vel(0.0f,2.0f, 0.0f);
 	float raidus = 0.2f;
 	float mass = 1.2f;
 
 	Sphere s(pos, vel, radius, mass);
-	spheres.push_back(s);
+
+	if (NUMBER_SPHERES != 0)
+		spheres.push_back(s);
 }
 
 //Initialize all the particles and walls
 void initScene() {
 	//initParticles();
-	//initSpheres();
+	initSpheres();
 	initWalls();
 }
 
 //Initialize OpenGL
 void init() {
 	glClearColor(1.0, 1.0, 0.0, 1.0);
-	glEnable(GL_PROGRAM_POINT_SIZE);
-	glPointSize(10); 
+	glPointSize(15);
+	glTexEnvi(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE);
+	glPointParameteri(GL_POINT_SPRITE_COORD_ORIGIN, GL_LOWER_LEFT);
 	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_POINT_SPRITE);
 	// Accept fragment if it closer to the camera than the former one
 	glDepthFunc(GL_LESS);
 
@@ -551,7 +554,7 @@ void init() {
 
 	//Load the shaders
 	fluidShader = LoadShaders( "Shaders/sph.vertexshader", "Shaders/sph.fragmentshader" );
-	boxShader = LoadShaders( "Shaders/sph.vertexshader", "Shaders/sph.fragmentshader" );
+	boxShader = LoadShaders( "Shaders/box.vertexshader", "Shaders/box.fragmentshader" );
 	//sphereShader = LoadShaders( "Shaders/sph.vertexshader", "Shaders/sph.fragmentshader" );
 
     initScene();
@@ -683,7 +686,7 @@ void init() {
 	//glGenBuffers(1, &vboc);
     glEnableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
-	size_t size2 = 3*sizeof(GLfloat)*(MAX_PARTICLES+4*NUMBER_WALLS);
+	size_t size2 = 3*sizeof(GLfloat)*(MAX_PARTICLES+4*NUMBER_WALLS+sphereVerts*NUMBER_SPHERES);
 	glBufferData(GL_ARRAY_BUFFER, size1, colors, GL_STREAM_DRAW);
     glEnableVertexAttribArray(1);
 

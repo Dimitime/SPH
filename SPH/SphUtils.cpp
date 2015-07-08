@@ -88,8 +88,8 @@ float SphUtils::lap_kernel(glm::vec3 i, glm::vec3 j) {
 
 	float result = 0.0f;
 	if (q < smooth_length)
-//		result = 45/((float)glm::pi<float>()*pow(smooth_length,6)) * (smooth_length-q);
-		result = 45/((float)glm::pi<float>()*pow(smooth_length,5)) * (1-q/smooth_length);
+		result = 45/((float)glm::pi<float>()*pow(smooth_length,6)) * (smooth_length-q);
+		//result = 45/((float)glm::pi<float>()*pow(smooth_length,5)) * (1-q/smooth_length);
 	return result;
 
 }
@@ -370,7 +370,7 @@ void SphUtils::collision(std::vector<Particle> &particles, std::vector<Wall> &wa
 					//std::cout << "vel: " << particles[i].vel.x << " " << particles[i].vel.y << " " << particles[i].vel.z << std::endl;
 			}
 		}
-/*
+
 		//Check for collisions with there sphere
 		for (std::vector<Sphere>::size_type j=0; j<spheres.size(); j++) {
 			float dist = glm::length(particles[i].pos-spheres[j].pos);
@@ -383,5 +383,5 @@ void SphUtils::collision(std::vector<Particle> &particles, std::vector<Wall> &wa
 //				std::cout << "New sphere v: " << spheres[j].vel.x <<  spheres[j].vel.y << spheres[j].vel.z << std::endl;
 			}
 		}
-*/	}
+	}
 }
