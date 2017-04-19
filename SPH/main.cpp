@@ -27,20 +27,20 @@ GLuint vbo[2];
 GLuint MatrixID;
 
 //timestep value
-const float dt = 0.01f;
+const float dt = 0.033f;
 float total_time = 0.0f;
 
 const float radius = 0.1f;
 //Smoothing length
-const float smooth_length = 0.5;
+const float smooth_length = 0.45;
 //The ideal density. This is the density of water
 const float rho0 = 10.0f;
 //The speed of sound in water
 const float c = 100.0f;
 //An error value used in collision detection
-const float epsilon = 0.1f;
+const float epsilon = 0.01f;
 
-bool toggleSim = true;
+bool toggleSim = false;
 bool generateParticles = false;
 
 //MVP matrices
@@ -48,8 +48,8 @@ bool generateParticles = false;
 glm::mat4 Projection = glm::perspective(45.0f, 4.0f / 3.0f, 0.1f, 100.0f);
 // Camera matrix
 glm::mat4 View = glm::lookAt(
-    glm::vec3(1.5f, 0.9f,3.0f), // Camera is at (1.5,1,3), in World Space
-    glm::vec3(0.0f, 0.0f, 0.0f), // and looks at the origin
+    glm::vec3(0.0f, -0.8f, 1.5f), // Camera is at (1.5,0.9,3), in World Space
+    glm::vec3(0.0f, -0.8f, 0.0f), // and looks at the origin
     glm::vec3(0.0f,1.0f,0.0f)  // Head is up (set to 0,-1,0 to look upside-down)
 );
 
@@ -64,7 +64,7 @@ std::vector<Particle> particles;
 std::vector<Wall> walls;
 std::vector<Sphere> spheres;
 
-void addParticle();
+void addParticle(glm::vec3 x, glm::vec3 v);
 
 /* 
  * Creates a triangle sphere mesh given a center and a radius
@@ -279,7 +279,15 @@ void disp(void) {
  */
 void step_scene() {
 	if (generateParticles)
-		addParticle();
+	{
+		float x = -.2f + rand() / ((float)RAND_MAX / (-0.2f - 0.2f));
+		float y = 1.3f;
+		float z = -.2f + rand() / ((float)RAND_MAX / (-0.2f - 0.2f));
+		float xvel = -.2f + rand() / ((float)RAND_MAX / (-0.2f - 0.2f));
+		float zvel = -.2f + rand() / ((float)RAND_MAX / (-0.2f - 0.2f));
+		float yvel = -1.0f;
+		addParticle(glm::vec3(x, y, z), glm::vec3(xvel, yvel, zvel));
+	}
 //	sph.update_cells(particles);
 	//std::cout << "Grid updated" << std::endl;
 	sph.update_density(particles);
@@ -310,29 +318,9 @@ static void idle() {
 ////////////////////////////////////////////////////////////////////////////////////////////
 // Control Functions
 ////////////////////////////////////////////////////////////////////////////////////////////
-/*
- * Keyboard functions for GLUT
- *
- */ 
-static void keyboard(unsigned char key, int x, int y) {
-    switch (key) {
-		case 's':
-			step_scene();
-			glutPostRedisplay();
-			break;
-		case 13:
-			generateParticles = !generateParticles;
-			break;
-		case 32:
-			toggleSim = !toggleSim;
-			break;
-		case 27:
-	exit(0);
-    }
-}
-
 //Loading shelders
-GLuint LoadShaders(const char * vertex_file_path, const char * fragment_file_path) {
+GLuint LoadShaders(const char * vertex_file_path, const char * fragment_file_path)
+{
     // Create the shaders
     GLuint VertexShaderID = glCreateShader(GL_VERTEX_SHADER);
     GLuint FragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
@@ -368,11 +356,11 @@ GLuint LoadShaders(const char * vertex_file_path, const char * fragment_file_pat
     glCompileShader(VertexShaderID);
  
     // Check Vertex Shader
-    glGetShaderiv(VertexShaderID, GL_COMPILE_STATUS, &Result);
-    glGetShaderiv(VertexShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
-    std::vector<char> VertexShaderErrorMessage(InfoLogLength);
-    glGetShaderInfoLog(VertexShaderID, InfoLogLength, NULL, &VertexShaderErrorMessage[0]);
-    fprintf(stdout, "%s\n", &VertexShaderErrorMessage[0]);
+    //glGetShaderiv(VertexShaderID, GL_COMPILE_STATUS, &Result);
+    //glGetShaderiv(VertexShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
+    //std::vector<char> VertexShaderErrorMessage(InfoLogLength);
+    //glGetShaderInfoLog(VertexShaderID, InfoLogLength, NULL, &VertexShaderErrorMessage[0]);
+    //fprintf(stdout, "%s\n", &VertexShaderErrorMessage[0]);
  
     // Compile Fragment Shader
     printf("Compiling shader : %s\n", fragment_file_path);
@@ -381,11 +369,11 @@ GLuint LoadShaders(const char * vertex_file_path, const char * fragment_file_pat
     glCompileShader(FragmentShaderID);
  
     // Check Fragment Shader
-    glGetShaderiv(FragmentShaderID, GL_COMPILE_STATUS, &Result);
-    glGetShaderiv(FragmentShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
-    std::vector<char> FragmentShaderErrorMessage(InfoLogLength);
-    glGetShaderInfoLog(FragmentShaderID, InfoLogLength, NULL, &FragmentShaderErrorMessage[0]);
-    fprintf(stdout, "%s\n", &FragmentShaderErrorMessage[0]);
+    //glGetShaderiv(FragmentShaderID, GL_COMPILE_STATUS, &Result);
+    //glGetShaderiv(FragmentShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
+    //std::vector<char> FragmentShaderErrorMessage(InfoLogLength);
+    //glGetShaderInfoLog(FragmentShaderID, InfoLogLength, NULL, &FragmentShaderErrorMessage[0]);
+    //fprintf(stdout, "%s\n", &FragmentShaderErrorMessage[0]);
  
     // Link the program
     fprintf(stdout, "Linking program\n");
@@ -408,13 +396,38 @@ GLuint LoadShaders(const char * vertex_file_path, const char * fragment_file_pat
     return ProgramID;
 }
 
+/*
+* Keyboard functions for GLUT
+*
+*/
+static void keyboard(unsigned char key, int x, int y) {
+	switch (key) {
+	case 's':
+		step_scene();
+		glutPostRedisplay();
+		break;
+	case 'r':
+		fluidShader = LoadShaders("Shaders/sph.vertexshader", "Shaders/sph.fragmentshader");
+		boxShader = LoadShaders("Shaders/box.vertexshader", "Shaders/box.fragmentshader");
+	case 13: // Enter Key
+		generateParticles = !generateParticles;
+		break;
+	case 32: // Space Bar
+		toggleSim = !toggleSim;
+		break;
+	case 27: // ESC
+		exit(0);
+	}
+}
+
 //Init the values of the particles
-void addParticle() {
+void addParticle(glm::vec3 x, glm::vec3 v)
+{
 	//Density of water kg/m^3
 	float density = rho0+epsilon;
 	//Mass in KG of each particle
 	float mass = .1f*smooth_length*smooth_length*smooth_length*rho0;
-	std::cout << "Mass: " << mass << std::endl;
+	//std::cout << "Mass: " << mass << std::endl;
 	//Pressure of the fluid
 	float pressure = 1.0f;
 
@@ -422,16 +435,7 @@ void addParticle() {
 	//Thermal energy? I might get rid of this
 	float thermal = 1.0f;
 	
-
-
-	float x = -.2f + rand()/( (float)RAND_MAX/(-0.2f-0.2f) );
-	float y = 1.3f;
-	float z = -.2f + rand()/( (float)RAND_MAX/(-0.2f-0.2f) );
-	float xvel = -.2f + rand()/( (float)RAND_MAX/(-0.2f-0.2f) );
-	float zvel = -.2f + rand()/( (float)RAND_MAX/(-0.2f-0.2f) );
-	float yvel = -1.0f;
-	
-	Particle part(glm::vec3(x,y,z), glm::vec3(xvel,yvel,zvel), glm::vec3(0.0f,0.0f,0.0f), mass, density, pressure, thermal);
+	Particle part(x, v, glm::vec3(0.0f,0.0f,0.0f), mass, density, pressure, thermal);
 
 
 	if (particles.size() < MAX_PARTICLES)
@@ -480,7 +484,24 @@ void addParticle() {
 		x += radius;
     }
 */
-	std::cout << particles.size() << std::endl;
+	//std::cout << particles.size() << std::endl;
+}
+
+void initParticles()
+{
+	float max = 0.9;
+	float min = -0.9;
+
+	for (float i = min; i <= max; i += 0.1)
+	{
+		for (float j = -0.9; j <= -0.6; j += 0.1)
+		{
+			for (float k = min; k <= max; k += 0.1)
+			{
+				addParticle(glm::vec3(i, j, k), glm::vec3(0, 0, 0));
+			}
+		}
+	}
 }
 
 //Init the values of the walls
@@ -532,7 +553,7 @@ void initSpheres() {
 
 //Initialize all the particles and walls
 void initScene() {
-	//initParticles();
+	initParticles();
 	initSpheres();
 	initWalls();
 }
@@ -545,6 +566,7 @@ void init() {
 	glPointParameteri(GL_POINT_SPRITE_COORD_ORIGIN, GL_LOWER_LEFT);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_POINT_SPRITE);
+	glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 	// Accept fragment if it closer to the camera than the former one
 	glDepthFunc(GL_LESS);
 
@@ -689,7 +711,7 @@ void init() {
 	size_t size2 = 3*sizeof(GLfloat)*(MAX_PARTICLES+4*NUMBER_WALLS+sphereVerts*NUMBER_SPHERES);
 	glBufferData(GL_ARRAY_BUFFER, size1, colors, GL_STREAM_DRAW);
     glEnableVertexAttribArray(1);
-
+	
 	delete [] initpos;
 	delete [] colors;
 
